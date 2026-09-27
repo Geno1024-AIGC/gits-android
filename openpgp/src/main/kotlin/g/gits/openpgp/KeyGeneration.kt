@@ -45,16 +45,25 @@ enum class KeyAlgorithm {
         }
 }
 
-/** Creates OpenPGP keyrings laid out the way `gpg --quick-generate-key` does. */
+/** Creates OpenPGP keyrings, the shape `gpg --quick-generate-key` used before subkeys. */
 object KeyGeneration {
 
     private const val RSA_BITS = 2048
 
     /**
-     * Generates a keyring with a certifying primary key and a dedicated signing subkey.
+     * Generates a single keyring holding one key that can both certify and sign.
      *
-     * The [userId] is a certification on the primary key, not decoration: a keyring
-     * exported without one is rejected by `gpg --import`, so the parameter is required.
+     * [userId] is a certification on the key, not decoration: a keyring exported
+     * without one is rejected by `gpg --import`.
+     *
+     * The modern GnuPG layout splits certification onto the primary key and signing
+     * onto a subkey, which additionally requires the primary to carry a direct key
+     * signature cross-certifying the subkey binding. BouncyCastle exposes no way to
+     * attach that signature to a generated ring, and GnuPG refuses to use a subkey
+     * that is not cross-certified, so a subkey layout here would mint keys that
+     * silently fail to sign everywhere outside this app. One key needs no
+     * cross-certification and interoperates cleanly. Keys imported from a desktop
+     * GnuPG still carry subkeys, and [SecretKeyRing] resolves those.
      */
     fun generate(
         userId: String,
@@ -63,17 +72,16 @@ object KeyGeneration {
         creationTime: Date = Date(),
     ): PGPSecretKeyRing {
         val provider = BouncyCastle.provider
-        val master = generateKeyPair(algorithm, creationTime)
-        val signing = generateKeyPair(algorithm, creationTime)
+        val key = generateKeyPair(algorithm, creationTime)
 
         val sha1 = JcaPGPDigestCalculatorProviderBuilder()
             .setProvider(provider)
             .build()
             .get(HashAlgorithmTags.SHA1)
 
-        val preferences = PGPSignatureSubpacketGenerator().apply {
-            setKeyFlags(false, KeyFlags.CERTIFY_OTHER or KeyFlags.AUTHENTICATION)
-            setIssuerFingerprint(false, master.publicKey)
+        val capabilities = PGPSignatureSubpacketGenerator().apply {
+            setKeyFlags(false, KeyFlags.CERTIFY_OTHER or KeyFlags.SIGN_DATA or KeyFlags.AUTHENTICATION)
+            setIssuerFingerprint(false, key.publicKey)
             setPreferredHashAlgorithms(
                 false,
                 intArrayOf(HashAlgorithmTags.SHA512, HashAlgorithmTags.SHA256),
@@ -92,27 +100,19 @@ object KeyGeneration {
             )
         }.generate()
 
-        val generator = PGPKeyRingGenerator(
+        return PGPKeyRingGenerator(
             PGPSignature.POSITIVE_CERTIFICATION,
-            master,
+            key,
             userId,
             sha1,
-            preferences,
+            capabilities,
             null,
             JcaPGPContentSignerBuilder(algorithm.pgpId, algorithm.hashAlgorithm)
                 .setProvider(provider),
             JcePBESecretKeyEncryptorBuilder(SymmetricKeyAlgorithmTags.AES_256, sha1)
                 .setProvider(provider)
                 .build(passphrase),
-        )
-
-        val subkeyBinding = PGPSignatureSubpacketGenerator().apply {
-            setKeyFlags(false, KeyFlags.SIGN_DATA)
-            setIssuerFingerprint(false, master.publicKey)
-        }.generate()
-
-        generator.addSubKey(signing, subkeyBinding, subkeyBinding)
-        return generator.generateSecretKeyRing()
+        ).generateSecretKeyRing()
     }
 
     private fun generateKeyPair(algorithm: KeyAlgorithm, creationTime: Date): PGPKeyPair {

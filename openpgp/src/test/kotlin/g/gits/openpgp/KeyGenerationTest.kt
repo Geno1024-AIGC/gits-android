@@ -1,7 +1,6 @@
 package g.gits.openpgp
 
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.params.ParameterizedTest
@@ -26,18 +25,18 @@ class KeyGenerationTest {
 
     @ParameterizedTest
     @EnumSource(KeyAlgorithm::class)
-    fun `generates a primary key and a dedicated signing subkey`(algorithm: KeyAlgorithm) {
+    fun `generates one key that can both certify and sign`(algorithm: KeyAlgorithm) {
         val ring = KeyGeneration.generate(userId, algorithm, passphrase)
         val keys = ring.allKeys()
 
         assertNotNull(ring.publicKey)
-        assertEquals(2, ring.size(), "expected a primary key plus one subkey")
-        assertTrue(keys[0].publicKey.canCertify(), "the primary key must certify")
-        assertFalse(
-            keys[0].publicKey.canSign(),
-            "the primary key must not sign, the subkey exists for that",
+        assertEquals(1, ring.size(), "one key, so gpg never needs a cross-certified subkey")
+        assertTrue(keys[0].publicKey.canCertify(), "the key must certify its own user id")
+        assertTrue(keys[0].publicKey.canSign(), "the key must be usable for signing directly")
+        assertTrue(
+            keys[0].publicKey.canAuthenticate(),
+            "phishable keys should still authenticate",
         )
-        assertTrue(keys[1].publicKey.canSign(), "the subkey must carry the sign capability")
     }
 
     @ParameterizedTest
