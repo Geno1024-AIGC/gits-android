@@ -52,6 +52,9 @@ internal fun PGPPublicKey.canSign(): Boolean =
 internal fun PGPPublicKey.canCertify(): Boolean =
     KeyFlags.CERTIFY_OTHER in capabilities()
 
+internal fun PGPPublicKey.canAuthenticate(): Boolean =
+    KeyFlags.AUTHENTICATION in capabilities()
+
 private fun decode(flags: Int): Set<Int> =
     FLAGS.filter { flags and it != 0 }.toSet()
 
