@@ -7,7 +7,7 @@ plugins {
     alias(libs.plugins.compose.compiler)
 }
 
-val stamp = Versioning.stamp(rootDir, projectDir, android = true)
+val stamp = Versioning.stamp(rootDir, projectDir)
 
 android {
     namespace = "g.gits.android"

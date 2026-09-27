@@ -7,6 +7,6 @@ plugins {
 }
 
 tasks.register("printVersion") {
-    val stamp = g.gits.gradle.Versioning.stamp(rootDir, projectDir, android = false)
+    val stamp = g.gits.gradle.Versioning.stamp(rootDir, projectDir)
     doLast { println(stamp.versionName) }
 }

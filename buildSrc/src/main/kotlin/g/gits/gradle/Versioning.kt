@@ -32,7 +32,13 @@ object Versioning {
         "assembleDebug", "assembleRelease", "bundleDebug", "bundleRelease",
     )
 
-    fun stamp(root: File, moduleDir: File, android: Boolean): Stamp = Stamp(
+    /**
+     * Aggregates that reach a packaging task transitively, so that a plain `build`
+     * still counts as a packaging event for the Android modules.
+     */
+    private val AGGREGATE = setOf("build", "assemble")
+
+    fun stamp(root: File, moduleDir: File): Stamp = Stamp(
         env = env(root),
         pack = packOf(moduleDir),
         sha1 = sha1(root),
@@ -52,17 +58,17 @@ object Versioning {
         packFile(moduleDir).readText().trim().ifEmpty { "0" }
 
     /**
-     * Increments `<module>/count.pack` once this session actually packages the module.
+     * Increments `<module>/count.pack` when this session requests packaging of the module.
      *
-     * The bump is a side effect of a completed packaging event, so the value stamped
-     * into the current build is the count of *previously* completed events. Rebuilding
-     * from a clean checkout of a given commit therefore reproduces the same `<pack>`.
+     * The bump is a side effect of a packaging event, so the value stamped into the
+     * current build is the count of *previously* completed events. Rebuilding from a
+     * clean checkout of a given commit therefore reproduces the same `<pack>`.
      */
     fun bumpOnPackaging(project: Project, moduleDir: File, android: Boolean) {
         val names = if (android) ANDROID_PACKAGING else JVM_PACKAGING
-        project.gradle.taskGraph.whenReady {
-            val packaged = it.allTasks.any { task -> task.name in names }
-            if (packaged) incrementPack(moduleDir)
+        val requested = project.gradle.startParameter.taskNames.map { it.substringAfterLast(':') }
+        if (requested.any { names.contains(it) || AGGREGATE.contains(it) }) {
+            incrementPack(moduleDir)
         }
     }
 

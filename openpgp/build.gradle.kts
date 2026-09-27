@@ -5,7 +5,7 @@ plugins {
     alias(libs.plugins.kotlin.jvm)
 }
 
-val stamp = Versioning.stamp(rootDir, projectDir, android = false)
+val stamp = Versioning.stamp(rootDir, projectDir)
 
 group = "g.gits"
 version = stamp.versionName
