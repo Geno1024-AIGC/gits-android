@@ -70,7 +70,30 @@ object DetachedSignatures {
             return next[0]
         }
     }
+
+    /**
+     * Who a signature claims to be from, without checking that claim.
+     *
+     * This reads the issuer subpackets and nothing else, so it is only good for
+     * showing a user which key Git says signed something. It proves nothing on its
+     * own; [DetachedSignatures.verify] is what turns the claim into a fact.
+     */
+    fun issuerOf(encoded: ByteArray): SignatureIssuer? {
+        val signature = parse(encoded)
+        return SignatureIssuer(
+            keyIdHex = signature.keyID.toULong().toString(16).padStart(16, '0').uppercase(),
+            fingerprintHex = signature.issuerFingerprint()?.toHex()?.uppercase(),
+            creationTimeEpochMillis = signature.creationTime.time,
+        )
+    }
 }
+
+/** The signer's identity as a signature states it, checked or not. */
+data class SignatureIssuer(
+    val keyIdHex: String,
+    val fingerprintHex: String?,
+    val creationTimeEpochMillis: Long,
+)
 
 /** ASCII-armors a signature, wrapped exactly as GnuPG writes it. */
 internal fun PGPSignature.armored(): ByteArray =
