@@ -79,7 +79,7 @@ fun HomeScreen(
         if (uri == null) return@rememberLauncherForActivityResult
         // Without this the grant is gone the next time the app starts, and the entry
         // in the recents list would point at a folder this app can no longer read.
-        context.contentResolver.let { DocumentTree.takePersistablePermission(context, uri) }
+        DocumentTree.takePersistablePermission(context, uri)
         DocumentTree.requireDirectoryOf(uri)
             .onSuccess { picked ->
                 parent = picked
