@@ -3,7 +3,6 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.compose.compiler)
 }
 
@@ -11,12 +10,12 @@ val stamp = Versioning.stamp(rootDir, projectDir)
 
 android {
     namespace = "g.gits.android"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "g.gits.android"
         minSdk = 26
-        targetSdk = 36
+        targetSdk = 37
         versionCode = stamp.versionCode
         versionName = stamp.versionName
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
