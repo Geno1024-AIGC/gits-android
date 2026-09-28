@@ -11,6 +11,7 @@ import org.eclipse.jgit.lib.Config
 import org.eclipse.jgit.lib.Constants
 import org.eclipse.jgit.lib.PersonIdent
 import org.eclipse.jgit.lib.NullProgressMonitor
+import org.eclipse.jgit.transport.CredentialsProvider
 import org.eclipse.jgit.transport.RefSpec
 import org.eclipse.jgit.transport.RemoteConfig
 import org.eclipse.jgit.transport.URIish
@@ -28,7 +29,7 @@ import java.io.File
 class Gits private constructor(
     private val git: Git,
     private val signer: GitsSigner?,
-    private val storedCredentials: Credentials,
+    private var credentials: CredentialsSource,
 ) : Closeable {
 
     private val repository get() = git.repository
@@ -188,6 +189,17 @@ class Gits private constructor(
         }
     }
 
+    /**
+     * Replaces where credentials come from.
+     *
+     * Useful when a repository was opened before the user had told the app about a
+     * host, and after they have. Returns this handle so a caller can write
+     * `gits.withCredentialsSource(...)` in place of a re-open.
+     */
+    fun withCredentialsSource(source: CredentialsSource): Gits = apply {
+        credentials = source
+    }
+
     // ---------------------------------------------------------------- branches
 
     fun branches(): List<BranchInfo> {
@@ -268,15 +280,28 @@ class Gits private constructor(
             .mapNotNull { it.credentialHost() }
             .toSet()
 
+    /**
+     * Credentials for [remote], resolved now from the host it points at.
+     *
+     * A remote with several fetch URLs is asked about its first one. That case is rare
+     * and the provider still refuses every host but the ones the remote lists, so a
+     * token cannot escape to a host the repository was not already configured for.
+     */
+    private fun providerFor(remote: String): CredentialsProvider? {
+        val hosts = credentialHosts(remote)
+        // A local path has nothing to authenticate, so the source is not consulted
+        // at all. A source that prompts should never be woken for a local transfer.
+        if (hosts.isEmpty()) return null
+        return credentials.forHost(hosts.first()).toProvider(hosts)
+    }
+
     /** Updates remote tracking refs without touching the working tree. */
     fun fetch(remote: String = "origin", prune: Boolean = true): List<GraphChange> {
         val command = git.fetch()
             .setRemote(remote)
             .setRemoveDeletedRefs(prune)
             .setProgressMonitor(NullProgressMonitor.INSTANCE)
-        storedCredentials.toProvider(credentialHosts(remote))?.let {
-            command.setCredentialsProvider(it)
-        }
+        providerFor(remote)?.let { command.setCredentialsProvider(it) }
         return command.call().trackingRefUpdates.map { update ->
             GraphChange(
                 ref = shortName(update.localName),
@@ -295,16 +320,13 @@ class Gits private constructor(
         remote: String = "origin",
         branch: String? = null,
         rebase: Boolean = true,
-        credentials: Credentials = storedCredentials,
     ): GraphChange? {
         val command = git.pull()
             .setRemote(remote)
             .setRebase(rebase)
             .setProgressMonitor(NullProgressMonitor.INSTANCE)
         branch?.let { command.setRemoteBranchName(it) }
-        credentials.toProvider(credentialHosts(remote))?.let {
-            command.setCredentialsProvider(it)
-        }
+        providerFor(remote)?.let { command.setCredentialsProvider(it) }
         val result = command.call()
         if (!result.isSuccessful) {
             throw TransportException("pull did not complete: ${result.fetchResult}")
@@ -326,16 +348,13 @@ class Gits private constructor(
         refspecs: List<String> = emptyList(),
         force: Boolean = false,
         pushTags: Boolean = false,
-        credentials: Credentials = storedCredentials,
     ): List<PushRefResult> {
         val command = git.push()
             .setRemote(remote)
             .setForce(force)
             .setProgressMonitor(NullProgressMonitor.INSTANCE)
         if (pushTags) command.setPushTags()
-        credentials.toProvider(credentialHosts(remote))?.let {
-            command.setCredentialsProvider(it)
-        }
+        providerFor(remote)?.let { command.setCredentialsProvider(it) }
 
         if (refspecs.isEmpty()) {
             command.setRefSpecs(listOf(RefSpec("${upstreamRef()}:${upstreamRef()}")))
@@ -431,14 +450,14 @@ class Gits private constructor(
                 .setInitialBranch(initialBranch)
                 .call(),
             signer = signer,
-            storedCredentials = Credentials.None,
+            credentials = CredentialsSource.None,
         )
 
         /** Opens an existing repository at [directory]. */
         fun open(
             directory: File,
             signer: GitsSigner? = null,
-            credentials: Credentials = Credentials.None,
+            credentials: CredentialsSource = CredentialsSource.None,
         ): Gits = Gits(Git.open(directory), signer, credentials)
 
         /**
@@ -451,12 +470,15 @@ class Gits private constructor(
             uri: String,
             directory: File,
             branch: String? = null,
-            credentials: Credentials = Credentials.None,
+            credentials: CredentialsSource = CredentialsSource.None,
             signer: GitsSigner? = null,
         ): Gits {
-            val provider = credentials.toProvider(
-                setOfNotNull(URIish(uri).credentialHost()),
-            )
+            val host = URIish(uri).credentialHost()
+            val provider = if (host == null) {
+                null
+            } else {
+                credentials.forHost(host).toProvider(setOf(host))
+            }
             val command = Git.cloneRepository()
                 .setURI(uri)
                 .setDirectory(directory)

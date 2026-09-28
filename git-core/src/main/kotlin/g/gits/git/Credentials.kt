@@ -33,6 +33,32 @@ sealed interface Credentials {
 }
 
 /**
+ * Supplies the credentials for whichever host a remote happens to point at.
+ *
+ * Keyed by host because that is the boundary a token is good within, and a remote can
+ * be pointed somewhere new by a config edit, a mirror, or a redirect. Resolving at the
+ * moment of use rather than when the repository was opened is what lets the app ask
+ * for a secret only once the user has actually chosen to talk to that host.
+ *
+ * [forHost] is called off the main thread, and may prompt the user, so it should be
+ * cheap to call more than once for the same host and should not prompt repeatedly
+ * within one operation.
+ */
+fun interface CredentialsSource {
+
+    /** What to offer a remote on [host], which is null for a local path. */
+    fun forHost(host: String?): Credentials
+
+    companion object {
+        /** Never authenticates, which is what a local repository wants. */
+        val None: CredentialsSource = CredentialsSource { Credentials.None }
+
+        /** Always offers the same credentials, whatever the host. */
+        fun of(credentials: Credentials): CredentialsSource = CredentialsSource { credentials }
+    }
+}
+
+/**
  * The provider JGit wants for these credentials, or null when none is needed.
  *
  * [hosts] is the set of names the secret is allowed to reach. It is not decoration: a
