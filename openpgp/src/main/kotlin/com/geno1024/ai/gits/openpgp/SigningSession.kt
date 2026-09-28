@@ -62,12 +62,23 @@ internal fun unlockKey(
     secretKey: PGPSecretKey,
     master: PGPSecretKeyRing,
     passphrase: CharArray,
-): SigningSession = SigningSession(
-    key = secretKey.info(master),
-    secretKey = secretKey,
-    privateKey = secretKey.extractPrivateKey(
-        JcePBESecretKeyDecryptorBuilder()
-            .setProvider(BouncyCastle.provider)
-            .build(passphrase),
-    ),
-)
+): SigningSession {
+    // A key with no passphrase needs no decryptor, and must not be handed one: asking
+    // BouncyCastle to decrypt unprotected key material throws, so a key the user chose
+    // to leave open would be unusable. The passphrase is ignored here, which is correct
+    // — there is nothing to unlock.
+    val privateKey = if (secretKey.isLocked()) {
+        secretKey.extractPrivateKey(
+            JcePBESecretKeyDecryptorBuilder()
+                .setProvider(BouncyCastle.provider)
+                .build(passphrase),
+        )
+    } else {
+        secretKey.extractPrivateKey(null)
+    }
+    return SigningSession(
+        key = secretKey.info(master),
+        secretKey = secretKey,
+        privateKey = privateKey,
+    )
+}

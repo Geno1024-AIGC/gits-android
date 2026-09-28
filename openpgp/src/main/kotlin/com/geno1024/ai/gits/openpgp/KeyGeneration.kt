@@ -111,6 +111,19 @@ object KeyGeneration {
             )
         }.generate()
 
+        // An empty passphrase means the key is stored unprotected, and that is a real
+        // choice rather than a mistake: the secret key sits on disk in the clear. It is
+        // also the only way to make a key that opens without a passphrase at all, which
+        // is what `gpg --passphrase ''` produces. Handing the empty array to the
+        // encryptor instead would yield s2k usage 254 — a key encrypted with the empty
+        // string, which still needs a passphrase to open and looks protected to anything
+        // reading s2k usage, so it would be indistinguishable here from a real one.
+        val encryptor = passphrase.takeIf { it.isNotEmpty() }?.let { passphrase ->
+            JcePBESecretKeyEncryptorBuilder(SymmetricKeyAlgorithmTags.AES_256, sha1)
+                .setProvider(provider)
+                .build(passphrase)
+        }
+
         return PGPKeyRingGenerator(
             PGPSignature.POSITIVE_CERTIFICATION,
             key,
@@ -120,9 +133,7 @@ object KeyGeneration {
             null,
             JcaPGPContentSignerBuilder(algorithm.pgpId, algorithm.hashAlgorithm)
                 .setProvider(provider),
-            JcePBESecretKeyEncryptorBuilder(SymmetricKeyAlgorithmTags.AES_256, sha1)
-                .setProvider(provider)
-                .build(passphrase),
+            encryptor,
         ).generateSecretKeyRing()
     }
 

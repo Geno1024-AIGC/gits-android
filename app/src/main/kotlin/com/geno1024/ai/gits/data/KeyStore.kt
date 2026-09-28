@@ -91,6 +91,12 @@ class KeyStore private constructor(context: Context) {
             keyrings = keyrings,
             fallbackSpec = selected,
             passphrases = PassphraseSource { key ->
+                // A key stored without a passphrase needs none, and must not be treated
+                // as locked just because nothing was typed for it: locking, or an app
+                // restart, would otherwise make such a key permanently unable to sign.
+                if (!key.isPassphraseProtected) {
+                    return@PassphraseSource CharArray(0)
+                }
                 unlocked[key.fingerprintHex]
                     ?: throw IllegalStateException(
                         "The key ${key.fingerprintAbbreviated} is locked; unlock it to sign.",

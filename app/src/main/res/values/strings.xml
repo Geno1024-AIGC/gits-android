@@ -39,6 +39,7 @@
     <string name="keys_empty">This app holds no keys yet. Create one, or import an armored key file.</string>
     <string name="keys_unnamed">Unnamed key</string>
     <string name="keys_other_algorithm">other algorithm</string>
+    <string name="keys_passphrase_optional_note">Leave both boxes empty for a key with no passphrase, which is stored unprotected.</string>
     <string name="keys_passphrase_mismatch">The two passphrases differ.</string>
     <string name="action_new_key">New key</string>
     <string name="action_import_key">Import key</string>
@@ -47,6 +48,7 @@
     <string name="field_name">Name</string>
     <string name="field_email">Email</string>
     <string name="field_passphrase">Passphrase</string>
+    <string name="field_passphrase_optional">Passphrase (leave empty if the key has none)</string>
     <string name="field_passphrase_again">Passphrase again</string>
     <string name="repo_no_signing_key">This app holds no key that can sign yet, so commits would be unsigned.</string>
     <string name="repo_no_identity">Git needs a name and an email before it can commit</string>

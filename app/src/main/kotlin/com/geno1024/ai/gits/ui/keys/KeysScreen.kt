@@ -401,7 +401,10 @@ private fun GenerateKeyDialog(
     var passphrase by remember { mutableStateOf("") }
     var confirm by remember { mutableStateOf("") }
 
-    val passphraseError = passphrase.isNotEmpty() && passphrase != confirm
+    // Leaving both boxes empty is a deliberate option, not an unfinished form: a key
+    // with no passphrase is stored unprotected and opens without one. Only a
+    // half-typed passphrase is an error.
+    val passphraseError = passphrase != confirm
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -450,6 +453,11 @@ private fun GenerateKeyDialog(
                     visualTransformation = PasswordVisualTransformation(),
                     singleLine = true,
                 )
+                Text(
+                    text = stringResource(R.string.keys_passphrase_optional_note),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
                 if (passphraseError) {
                     Text(
                         text = stringResource(R.string.keys_passphrase_mismatch),
@@ -462,8 +470,7 @@ private fun GenerateKeyDialog(
         confirmButton = {
             TextButton(
                 onClick = { onCreate(name, email, algorithm, passphrase.toCharArray()) },
-                enabled = name.isNotBlank() && email.isNotBlank() &&
-                    passphrase.isNotEmpty() && !passphraseError,
+                enabled = name.isNotBlank() && email.isNotBlank() && !passphraseError,
             ) { Text(stringResource(R.string.action_create)) }
         },
         dismissButton = {
@@ -486,16 +493,17 @@ private fun PassphraseDialog(
             OutlinedTextField(
                 value = passphrase,
                 onValueChange = { passphrase = it },
-                label = { Text(stringResource(R.string.field_passphrase)) },
+                label = { Text(stringResource(R.string.field_passphrase_optional)) },
                 visualTransformation = PasswordVisualTransformation(),
                 singleLine = true,
             )
         },
         confirmButton = {
-            TextButton(
-                onClick = { onConfirm(passphrase.toCharArray()) },
-                enabled = passphrase.isNotEmpty(),
-            ) { Text(stringResource(R.string.action_ok)) }
+            // An empty box is allowed because plenty of keys have no passphrase, and
+            // insisting on one here would make such a key impossible to import at all.
+            TextButton(onClick = { onConfirm(passphrase.toCharArray()) }) {
+                Text(stringResource(R.string.action_ok))
+            }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
