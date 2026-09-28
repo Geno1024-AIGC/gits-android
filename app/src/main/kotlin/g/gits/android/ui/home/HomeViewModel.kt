@@ -100,5 +100,8 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    /** Shows a failure the screen found rather than one an operation reported. */
+    fun report(message: String) = state.update { it.copy(error = message) }
+
     fun clearError() = state.update { it.copy(error = null) }
 }

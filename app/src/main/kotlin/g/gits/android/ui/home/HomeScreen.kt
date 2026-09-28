@@ -1,5 +1,7 @@
 package g.gits.android.ui.home
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,6 +14,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CreateNewFolder
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.FolderOpen
@@ -37,12 +40,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import g.gits.android.R
+import g.gits.android.data.DocumentTree
 import g.gits.android.data.RecentRepository
 import java.io.File
 
@@ -55,8 +60,38 @@ fun HomeScreen(
     viewModel: HomeViewModel = viewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+
     var creating by remember { mutableStateOf(false) }
     var opening by remember { mutableStateOf(false) }
+
+    /**
+     * The folder a new repository would be made inside, when one was picked.
+     *
+     * Held here rather than passed down so that picking a folder is the same gesture
+     * whether it ends in opening something or making something.
+     */
+    var parent by remember { mutableStateOf<File?>(null) }
+
+    val pickFolder = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocumentTree(),
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        // Without this the grant is gone the next time the app starts, and the entry
+        // in the recents list would point at a folder this app can no longer read.
+        context.contentResolver.let { DocumentTree.takePersistablePermission(context, uri) }
+        DocumentTree.requireDirectoryOf(uri)
+            .onSuccess { picked ->
+                parent = picked
+                if (opening) {
+                    opening = false
+                    viewModel.open(picked.path, onOpen)
+                } else {
+                    creating = true
+                }
+            }
+            .onFailure { viewModel.report(it.message ?: "That folder cannot be used.") }
+    }
 
     Scaffold(
         topBar = {
@@ -75,7 +110,7 @@ fun HomeScreen(
                             contentDescription = stringResource(R.string.keys_title),
                         )
                     }
-                    IconButton(onClick = { opening = true }) {
+                    IconButton(onClick = { pickFolder.launch(DocumentTree.initialUri()) }) {
                         Icon(
                             Icons.Default.FolderOpen,
                             contentDescription = stringResource(R.string.action_open_repository),
@@ -100,7 +135,7 @@ fun HomeScreen(
                 state.repositories.isEmpty() -> EmptyState(
                     title = stringResource(R.string.home_empty_title),
                     detail = stringResource(R.string.home_empty_detail),
-                    onOpen = { opening = true },
+                    onOpen = { pickFolder.launch(DocumentTree.initialUri()) },
                     modifier = Modifier.align(Alignment.Center),
                 )
 
@@ -140,7 +175,9 @@ fun HomeScreen(
 
     if (creating) {
         CreateRepositoryDialog(
-            suggestedFolder = viewModel.suggestedFolder,
+            suggestedFolder = parent?.let { "${it.name}/" } ?: viewModel.suggestedFolder,
+            parent = parent,
+            onPickParent = { pickFolder.launch(DocumentTree.initialUri()) },
             onDismiss = { creating = false },
             onCreate = { path, branch ->
                 creating = false
@@ -253,6 +290,8 @@ private fun FolderDialog(
 @Composable
 private fun CreateRepositoryDialog(
     suggestedFolder: String,
+    parent: File?,
+    onPickParent: () -> Unit,
     onDismiss: () -> Unit,
     onCreate: (String, String) -> Unit,
 ) {
@@ -264,6 +303,25 @@ private fun CreateRepositoryDialog(
         title = { Text(stringResource(R.string.action_create_repository)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    IconButton(onClick = onPickParent) {
+                        Icon(
+                            Icons.Default.CreateNewFolder,
+                            contentDescription = stringResource(R.string.action_pick_parent),
+                        )
+                    }
+                    Text(
+                        text = parent?.path ?: stringResource(R.string.create_no_parent),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
                 FolderField(path = path, onPathChange = { path = it }, suggested = suggestedFolder)
                 FolderHint()
                 OutlinedTextField(
@@ -277,7 +335,7 @@ private fun CreateRepositoryDialog(
         },
         confirmButton = {
             TextButton(
-                onClick = { onCreate(path, branch) },
+                onClick = { onCreate(parent?.let { File(it, path.trim()) }?.path ?: path, branch) },
                 enabled = path.isNotBlank(),
             ) { Text(stringResource(R.string.action_create)) }
         },

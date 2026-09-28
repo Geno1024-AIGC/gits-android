@@ -51,6 +51,8 @@
     <string name="repo_no_signing_key">This app holds no key that can sign yet, so commits would be unsigned.</string>
     <string name="repo_no_identity">Git needs a name and an email before it can commit</string>
     <string name="action_check_update">Check for updates</string>
+    <string name="action_pick_parent">Choose where to put it</string>
+    <string name="create_no_parent">Nowhere yet \u2014 tap the folder button to pick one.</string>
 
     <string name="update_title">Updates</string>
     <string name="update_installed_label">Installed</string>
