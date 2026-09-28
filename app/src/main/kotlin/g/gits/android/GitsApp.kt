@@ -9,12 +9,14 @@ import androidx.navigation.navArgument
 import g.gits.android.ui.home.HomeScreen
 import g.gits.android.ui.keys.KeysScreen
 import g.gits.android.ui.repo.RepoScreen
+import g.gits.android.ui.update.UpdateScreen
 import java.io.File
 
 private object Routes {
     const val HOME = "home"
     const val REPO = "repo"
     const val KEYS = "keys"
+    const val UPDATE = "update"
 
     /** Paths go in the back stack as an argument, so they are encoded, not interpolated. */
     fun repo(path: String) = "$REPO/${java.net.URLEncoder.encode(path, "UTF-8")}"
@@ -30,7 +32,11 @@ fun GitsApp() {
             HomeScreen(
                 onOpen = { directory -> controller.navigate(Routes.repo(directory.path)) },
                 onManageKeys = { controller.navigate(Routes.KEYS) },
+                onCheckUpdate = { controller.navigate(Routes.UPDATE) },
             )
+        }
+        composable(Routes.UPDATE) {
+            UpdateScreen(onBack = { controller.popBackStack() })
         }
         composable(Routes.KEYS) {
             KeysScreen(onBack = { controller.popBackStack() })

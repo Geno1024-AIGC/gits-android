@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.FolderOpen
+import androidx.compose.material.icons.filled.SystemUpdateAlt
 import androidx.compose.material.icons.filled.VpnKey
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -50,6 +51,7 @@ import java.io.File
 fun HomeScreen(
     onOpen: (File) -> Unit,
     onManageKeys: () -> Unit,
+    onCheckUpdate: () -> Unit,
     viewModel: HomeViewModel = viewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -61,6 +63,12 @@ fun HomeScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.app_name)) },
                 actions = {
+                    IconButton(onClick = onCheckUpdate) {
+                        Icon(
+                            Icons.Default.SystemUpdateAlt,
+                            contentDescription = stringResource(R.string.action_check_update),
+                        )
+                    }
                     IconButton(onClick = onManageKeys) {
                         Icon(
                             Icons.Default.VpnKey,

@@ -50,4 +50,30 @@
     <string name="field_passphrase_again">Passphrase again</string>
     <string name="repo_no_signing_key">This app holds no key that can sign yet, so commits would be unsigned.</string>
     <string name="repo_no_identity">Git needs a name and an email before it can commit</string>
+    <string name="action_check_update">Check for updates</string>
+
+    <string name="update_title">Updates</string>
+    <string name="update_installed_label">Installed</string>
+    <string name="update_unknown_version">unknown</string>
+    <string name="update_available_label">Newer build</string>
+    <string name="update_up_to_date">Nothing newer than this is published.</string>
+    <string name="update_download">Download</string>
+    <string name="update_downloading">Downloading \u2014 %1$s</string>
+    <string name="update_install">Install</string>
+    <string name="update_not_now">Not now</string>
+    <string name="update_source_heading">Download from</string>
+    <string name="update_feed_note">Which builds exist is always read from GitHub. A mirror only
+        moves the download, so a mirror cannot talk this app into installing a different
+        build than the one GitHub named.</string>
+    <string name="update_channel">Installing</string>
+    <string name="update_installed">Installed. The new version is ready to use.</string>
+    <string name="update_install_canceled">The install was cancelled.</string>
+    <string name="update_install_conflict">The install was refused, most likely because that build was
+        signed with a different key.</string>
+    <string name="update_install_invalid">The downloaded file was not a valid build.</string>
+    <string name="update_install_incompatible">That build will not run on this device.</string>
+    <string name="update_install_no_space">There is not enough room to install that build.</string>
+    <string name="update_install_timeout">The install took too long and was given up on.</string>
+    <string name="update_install_blocked">Something on this device refused to allow the install.</string>
+    <string name="update_install_failed">The install did not finish (code %1$d).</string>
 </resources>
