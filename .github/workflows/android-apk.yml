@@ -26,6 +26,7 @@ jobs:
       version_name: ${{ steps.version.outputs.version_name }}
       version_code: ${{ steps.version.outputs.version_code }}
       short_sha: ${{ steps.version.outputs.short_sha }}
+      head_sha: ${{ steps.version.outputs.head_sha }}
       file_name: ${{ steps.version.outputs.file_name }}
     steps:
       - uses: actions/checkout@v4
@@ -67,6 +68,9 @@ jobs:
           version_name="$(sed -n "s/.* versionName='\([^']*\)'.*/\1/p" <<< "$badging")"
           version_code="$(sed -n "s/.* versionCode='\([^']*\)'.*/\1/p" <<< "$badging")"
           short_sha="$(git rev-parse --short=8 HEAD)"
+          # Full sha separately: actions/checkout only treats a ref as a commit when
+          # it is all 40 hex characters, and would read a short one as a branch name.
+          head_sha="$(git rev-parse HEAD)"
 
           if [ -z "$version_name" ] || [ -z "$version_code" ]; then
             echo "could not read a version out of the built APK" >&2
@@ -83,6 +87,7 @@ jobs:
             echo "version_name=$version_name"
             echo "version_code=$version_code"
             echo "short_sha=$short_sha"
+            echo "head_sha=$head_sha"
             echo "file_name=$file_name"
           } >> "$GITHUB_OUTPUT"
 
@@ -110,7 +115,7 @@ jobs:
       # ref keeps the release attached to the exact commit that produced the APK.
       - uses: actions/checkout@v4
         with:
-          ref: ${{ needs.build.outputs.short_sha }}
+          ref: ${{ needs.build.outputs.head_sha }}
 
       - uses: actions/download-artifact@v4
         with:
