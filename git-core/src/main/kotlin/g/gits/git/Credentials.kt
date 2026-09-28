@@ -70,8 +70,16 @@ internal fun Credentials.toProvider(hosts: Set<String>): CredentialsProvider? = 
     is Credentials.UsernamePassword -> GitsCredentialsProvider(this, hosts)
 }
 
-/** The names a credential may be given to, derived from a remote's configured URIs. */
-internal fun URIish.credentialHost(): String? = host?.lowercase()?.takeIf { it.isNotEmpty() }
+/**
+ * The name a credential may be given to for this URI, or null when it names no host.
+ *
+ * Lower-cased because hosts are not case-sensitive and two spellings of one host
+ * should not be two different accounts.
+ */
+fun URIish.credentialHost(): String? = host?.lowercase()?.takeIf { it.isNotEmpty() }
+
+/** [credentialHost] for a URI written as text, for the cases where only a string is held. */
+fun String.toHost(): String? = runCatching { URIish(this).credentialHost() }.getOrNull()
 
 /**
  * Answers credential prompts for one remote, and refuses to answer for any other.

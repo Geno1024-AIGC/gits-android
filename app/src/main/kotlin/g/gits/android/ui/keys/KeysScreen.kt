@@ -48,6 +48,7 @@ import android.net.Uri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import g.gits.android.R
+import g.gits.android.data.StoredAccount
 import g.gits.android.data.StoredKey
 import g.gits.openpgp.KeyAlgorithm
 
@@ -89,7 +90,7 @@ fun KeysScreen(onBack: () -> Unit, viewModel: KeysViewModel = viewModel()) {
         snackbarHost = { SnackbarHost(snackbars) },
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-            if (state.keys.isEmpty()) {
+            if (state.keys.isEmpty() && state.accounts.isEmpty()) {
                 Text(
                     text = stringResource(R.string.keys_empty),
                     style = MaterialTheme.typography.bodyMedium,
@@ -98,9 +99,28 @@ fun KeysScreen(onBack: () -> Unit, viewModel: KeysViewModel = viewModel()) {
                 )
             } else {
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    item {
+                        SectionHeader(stringResource(R.string.keys_section))
+                    }
                     items(state.keys, key = { it.fingerprintHex }) { key ->
                         KeyRow(key = key, onForget = { viewModel.forget(key) })
                         HorizontalDivider()
+                    }
+                    if (state.accounts.isNotEmpty()) {
+                        item { SectionHeader(stringResource(R.string.accounts_section)) }
+                        items(state.accounts, key = { it.host }) { account ->
+                            AccountRow(
+                                account = account,
+                                onForget = { viewModel.forgetAccount(account) },
+                            )
+                            HorizontalDivider()
+                        }
+                        item {
+                            TextButton(
+                                onClick = viewModel::forgetAllAccounts,
+                                modifier = Modifier.padding(horizontal = 8.dp),
+                            ) { Text(stringResource(R.string.action_forget_all_accounts)) }
+                        }
                     }
                 }
             }
@@ -156,6 +176,35 @@ fun KeysScreen(onBack: () -> Unit, viewModel: KeysViewModel = viewModel()) {
                 TextButton(onClick = viewModel::dismissError) { Text(stringResource(R.string.action_ok)) }
             },
         )
+    }
+}
+
+@Composable
+private fun SectionHeader(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.titleSmall,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+    )
+}
+
+/** A host the app holds a token for, and the name that goes with it. */
+@Composable
+private fun AccountRow(account: StoredAccount, onForget: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(account.host, style = MaterialTheme.typography.bodyLarge)
+            Text(
+                text = account.username.ifBlank { stringResource(R.string.accounts_no_name) },
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        TextButton(onClick = onForget) { Text(stringResource(R.string.action_forget)) }
     }
 }
 

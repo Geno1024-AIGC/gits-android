@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import g.gits.git.BranchInfo
 import g.gits.git.ChangeKind
+import g.gits.android.data.CredentialStore
 import g.gits.android.data.KeyStore
 import g.gits.git.Gits
 import g.gits.git.Identity
@@ -20,6 +21,16 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+
+/** A transfer that cannot start until the user supplies a name and token for a host. */
+data class CredentialRequest(
+    val remote: String,
+    val host: String,
+    val transfer: Transfer,
+)
+
+/** The two operations that talk to a remote and can therefore need a secret. */
+enum class Transfer { PUSH, PULL }
 
 /** Which pane the repository screen is showing. */
 enum class RepoTab(val label: String) {
@@ -47,6 +58,8 @@ data class RepoUiState(
     val signCommits: Boolean = false,
     /** False when the app holds no key that can sign, so the switch can be disabled. */
     val signingAvailable: Boolean = false,
+    /** A transfer waiting for the user to name themselves to a host. */
+    val awaitingCredentials: CredentialRequest? = null,
 ) {
     val staged: List<WorkingChange> get() = changes.filter { it.kind == ChangeKind.STAGED }
     val unstaged: List<WorkingChange> get() = changes.filter { it.kind != ChangeKind.STAGED }
@@ -77,11 +90,12 @@ class RepoViewModel(
      * and the UI says so rather than offering a switch that would only fail.
      */
     private val keyStore = KeyStore.getInstance(application)
+    private val credentials = CredentialStore.getInstance(application)
 
     init {
         viewModelScope.launch {
             val opened = withContext(Dispatchers.IO) {
-                runCatching { Gits.open(File(path), keyStore.signer()) }
+                runCatching { Gits.open(File(path), keyStore.signer(), credentials.asSource()) }
             }
             gits = opened.getOrNull()
             state.update {
@@ -237,15 +251,61 @@ class RepoViewModel(
      * usual rejection (not fast-forward) is a sentence the user needs to read, not a
      * stack trace.
      */
-    fun push() = viewModelScope.launch {
-        state.update { it.copy(busy = true, error = null) }
-        val outcome = withContext(Dispatchers.IO) { runCatching { require().push() } }
-        outcome
-            .onSuccess { results -> reportPush(results) }
-            .onFailure { failure -> state.update { it.copy(error = failure.describe("Could not push")) } }
-        state.update { it.copy(busy = false) }
-        refresh()
+    fun push() = transfer(Transfer.PUSH) { it.push() }
+
+    /**
+     * Starts a transfer, or asks who the user is first.
+     *
+     * A host with no token would fail with a 401 that names nothing useful, and the
+     * user cannot tell from that what the app wanted. Asking before the exchange says
+     * exactly which host is being authenticated to and for what.
+     */
+    private fun transfer(
+        transfer: Transfer,
+        block: (Gits) -> Unit,
+    ) = viewModelScope.launch {
+        val remote = "origin"
+        val host = withContext(Dispatchers.IO) { hostOf(remote) }
+        if (host != null && !credentials.has(host)) {
+            state.update {
+                it.copy(awaitingCredentials = CredentialRequest(remote, host, transfer))
+            }
+            return@launch
+        }
+        run(transfer.failurePrefix, block)
     }
+
+    /** Records what the user typed and continues the transfer that needed it. */
+    fun provideCredentials(username: String, token: CharArray) = viewModelScope.launch {
+        val request = state.value.awaitingCredentials ?: return@launch
+        state.update { it.copy(busy = true, error = null, awaitingCredentials = null) }
+        val failure = withContext(Dispatchers.IO) {
+            runCatching { credentials.remember(request.host, username.trim(), token) }
+                .exceptionOrNull()
+        }
+        if (failure != null) {
+            state.update {
+                it.copy(busy = false, error = failure.describe("Could not save the token"))
+            }
+            return@launch
+        }
+        state.update { it.copy(busy = false) }
+        // The token is only wrong if the server says so, which the transfer will.
+        transfer(request.transfer) { repo ->
+            when (request.transfer) {
+                Transfer.PUSH -> repo.push(request.remote)
+                Transfer.PULL -> repo.pull(request.remote)
+            }
+        }
+    }
+
+    fun cancelCredentials() = state.update { it.copy(awaitingCredentials = null) }
+
+    private fun hostOf(remote: String): String? =
+        gits?.remotes()?.firstOrNull { it.name == remote }?.hosts?.firstOrNull()
+
+    private val Transfer.failurePrefix: String
+        get() = if (this == Transfer.PUSH) "Could not push" else "Could not pull"
 
     private fun reportPush(results: List<PushRefResult>) {
         val rejected = results.filterNot { it.isSuccess }
@@ -262,7 +322,7 @@ class RepoViewModel(
         }
     }
 
-    fun pull() = run("Could not pull") { repo -> repo.pull() }
+    fun pull() = transfer(Transfer.PULL) { it.pull() }
 
     fun addRemote(name: String, uri: String) = run("Could not add the remote") { repo ->
         repo.addRemote(name.trim(), uri.trim())

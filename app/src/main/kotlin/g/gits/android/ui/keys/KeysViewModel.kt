@@ -5,6 +5,8 @@ import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import g.gits.android.data.KeyStore
+import g.gits.android.data.CredentialStore
+import g.gits.android.data.StoredAccount
 import g.gits.android.data.StoredKey
 import g.gits.openpgp.KeyAlgorithm
 import kotlinx.coroutines.Dispatchers
@@ -21,6 +23,7 @@ data class KeysUiState(
     val error: String? = null,
     val message: String? = null,
     val canSign: Boolean = false,
+    val accounts: List<StoredAccount> = emptyList(),
 )
 
 /**
@@ -33,6 +36,7 @@ data class KeysUiState(
 class KeysViewModel(application: Application) : AndroidViewModel(application) {
 
     private val keyStore = KeyStore.getInstance(application)
+    private val credentials = CredentialStore.getInstance(application)
 
     private val state = MutableStateFlow(KeysUiState())
     val uiState: StateFlow<KeysUiState> = state.asStateFlow()
@@ -43,8 +47,16 @@ class KeysViewModel(application: Application) : AndroidViewModel(application) {
 
     fun refresh() = viewModelScope.launch {
         val keys = withContext(Dispatchers.IO) { keyStore.keys() }
-        state.update { it.copy(keys = keys, canSign = keys.any(StoredKey::canSign)) }
+        val accounts = withContext(Dispatchers.IO) { credentials.accounts() }
+        state.update {
+            it.copy(keys = keys, canSign = keys.any(StoredKey::canSign), accounts = accounts)
+        }
     }
+
+    fun forgetAccount(account: StoredAccount) =
+        run("Could not forget ${account.host}") { credentials.forget(account.host) }
+
+    fun forgetAllAccounts() = run("Could not forget the accounts") { credentials.forgetAll() }
 
     fun generate(name: String, email: String, algorithm: KeyAlgorithm, passphrase: CharArray) =
         run("Could not create the key") { keyStore.generate("$name <$email>", algorithm, passphrase) }
@@ -85,6 +97,8 @@ class KeysViewModel(application: Application) : AndroidViewModel(application) {
 
     override fun onCleared() {
         super.onCleared()
+        // Locking on the way out means an unlocked key does not outlive the screen
+        // that unlocked it. Tokens stay, because they are meant to.
         keyStore.lockAll()
     }
 }

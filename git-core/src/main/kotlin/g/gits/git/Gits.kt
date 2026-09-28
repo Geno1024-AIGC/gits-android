@@ -473,7 +473,7 @@ class Gits private constructor(
             credentials: CredentialsSource = CredentialsSource.None,
             signer: GitsSigner? = null,
         ): Gits {
-            val host = URIish(uri).credentialHost()
+            val host = uri.toHost()
             val provider = if (host == null) {
                 null
             } else {

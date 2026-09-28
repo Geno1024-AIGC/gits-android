@@ -82,7 +82,16 @@ data class RemoteInfo(
     val name: String,
     val uris: List<String>,
     val fetchRefSpecs: List<String>,
-)
+) {
+    /**
+     * The hosts these URIs point at, in order, without repeats.
+     *
+     * A caller that has to authenticate needs to know who it is talking to, and
+     * parsing a URI well enough to get that right is not something every caller should
+     * be doing. A local path has no host, which is how such a remote is recognised.
+     */
+    val hosts: List<String> = uris.mapNotNull { it.toHost() }.distinct()
+}
 
 /** One line of `git blame`, with the commit that last touched it. */
 data class BlameLine(

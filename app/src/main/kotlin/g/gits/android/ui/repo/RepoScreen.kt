@@ -44,6 +44,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -146,6 +147,19 @@ fun RepoScreen(path: String, onBack: () -> Unit) {
                 )
             }
         }
+    }
+
+    state.awaitingCredentials?.let { request ->
+        CredentialsDialog(
+            host = request.host,
+            action = if (request.transfer == Transfer.PUSH) {
+                stringResource(R.string.action_push)
+            } else {
+                stringResource(R.string.action_pull)
+            },
+            onDismiss = viewModel::cancelCredentials,
+            onConfirm = viewModel::provideCredentials,
+        )
     }
 
     state.error?.let { message ->
@@ -510,6 +524,61 @@ private fun RemotesPane(state: RepoUiState, viewModel: RepoViewModel) {
             },
         )
     }
+}
+
+/**
+ * Asks for a name and a secret for one host.
+ *
+ * The host is spelled out because a token is about to be handed to it, and the reason
+ * the app is asking is that some host wants one.
+ */
+@Composable
+private fun CredentialsDialog(
+    host: String,
+    action: String,
+    onDismiss: () -> Unit,
+    onConfirm: (String, CharArray) -> Unit,
+) {
+    var username by remember { mutableStateOf("") }
+    var token by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.credentials_title, action, host)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = stringResource(R.string.credentials_detail, host),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                OutlinedTextField(
+                    value = username,
+                    onValueChange = { username = it },
+                    label = { Text(stringResource(R.string.field_username)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    value = token,
+                    onValueChange = { token = it },
+                    label = { Text(stringResource(R.string.field_token)) },
+                    visualTransformation = PasswordVisualTransformation(),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onConfirm(username, token.toCharArray()) },
+                enabled = username.isNotBlank() && token.isNotBlank(),
+            ) { Text(action) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+        },
+    )
 }
 
 @Composable
