@@ -43,6 +43,17 @@ enum class KeyAlgorithm {
             RSA -> HashAlgorithmTags.SHA256
             ED25519 -> HashAlgorithmTags.SHA512
         }
+
+    companion object {
+        /**
+         * The algorithm with this PGP id, or null for one this app does not generate.
+         *
+         * Keys arrive from imports as a bare id, and a key the app cannot name is
+         * still a key it may have to sign with, so this reports null rather than
+         * guessing at the closest match.
+         */
+        fun of(pgpId: Int): KeyAlgorithm? = entries.firstOrNull { it.pgpId == pgpId }
+    }
 }
 
 /** Creates OpenPGP keyrings, the shape `gpg --quick-generate-key` used before subkeys. */

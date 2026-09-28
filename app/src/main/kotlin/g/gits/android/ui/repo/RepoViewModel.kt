@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import g.gits.git.BranchInfo
 import g.gits.git.ChangeKind
+import g.gits.android.data.KeyStore
 import g.gits.git.Gits
 import g.gits.git.Identity
 import g.gits.git.LogEntry
@@ -44,6 +45,8 @@ data class RepoUiState(
     val remotes: List<RemoteInfo> = emptyList(),
     val identity: Identity? = null,
     val signCommits: Boolean = false,
+    /** False when the app holds no key that can sign, so the switch can be disabled. */
+    val signingAvailable: Boolean = false,
 ) {
     val staged: List<WorkingChange> get() = changes.filter { it.kind == ChangeKind.STAGED }
     val unstaged: List<WorkingChange> get() = changes.filter { it.kind != ChangeKind.STAGED }
@@ -69,10 +72,16 @@ class RepoViewModel(
 
     private var gits: Gits? = null
 
+    /**
+     * Keys the app owns, once a key store exists. Empty means nothing can be signed,
+     * and the UI says so rather than offering a switch that would only fail.
+     */
+    private val keyStore = KeyStore.getInstance(application)
+
     init {
         viewModelScope.launch {
             val opened = withContext(Dispatchers.IO) {
-                runCatching { Gits.open(File(path)) }
+                runCatching { Gits.open(File(path), keyStore.signer()) }
             }
             gits = opened.getOrNull()
             state.update {
@@ -111,6 +120,7 @@ class RepoViewModel(
                         remotes = read.remotes,
                         identity = read.identity,
                         signCommits = read.signCommits,
+                        signingAvailable = keyStore.hasSigningKey,
                     )
                 }
             }
@@ -170,6 +180,9 @@ class RepoViewModel(
     }
 
     fun setSignCommits(enabled: Boolean) = run("Could not change the signing setting") { repo ->
+        if (enabled && !keyStore.hasSigningKey) {
+            error("This app holds no OpenPGP key that can sign yet.")
+        }
         repo.setSignCommitsByDefault(enabled)
     }
 
@@ -188,7 +201,9 @@ class RepoViewModel(
         }
         viewModelScope.launch {
             state.update { it.copy(busy = true, error = null) }
-            val sign = state.value.signCommits
+            // Asked for again here, because the switch and the commit are separate
+            // taps and the key store may have changed in between.
+            val sign = state.value.signCommits && keyStore.hasSigningKey
             val outcome = withContext(Dispatchers.IO) {
                 runCatching { require().commit(text, sign = sign) }
             }
@@ -279,6 +294,11 @@ class RepoViewModel(
         super.onCleared()
         runCatching { gits?.close() }
         gits = null
+    }
+
+    /** Re-reads which keys the app can sign with, after the keys screen changed them. */
+    fun refreshKeys() = viewModelScope.launch {
+        state.update { it.copy(signingAvailable = keyStore.hasSigningKey) }
     }
 }
 

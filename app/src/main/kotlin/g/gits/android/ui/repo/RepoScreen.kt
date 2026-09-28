@@ -194,8 +194,20 @@ private fun ChangesPane(state: RepoUiState, viewModel: RepoViewModel) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Switch(checked = state.signCommits, onCheckedChange = viewModel::setSignCommits)
+            Switch(
+                checked = state.signCommits,
+                onCheckedChange = viewModel::setSignCommits,
+                // Offering a switch that can only fail is worse than not offering it.
+                enabled = state.signingAvailable,
+            )
             Text("Sign commits", style = MaterialTheme.typography.bodyMedium)
+        }
+        if (!state.signingAvailable) {
+            Text(
+                text = stringResource(R.string.repo_no_signing_key),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
 
         if (state.changes.isEmpty()) {
