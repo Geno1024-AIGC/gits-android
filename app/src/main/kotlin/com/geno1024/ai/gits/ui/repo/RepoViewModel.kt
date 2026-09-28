@@ -95,7 +95,12 @@ class RepoViewModel(
     init {
         viewModelScope.launch {
             val opened = withContext(Dispatchers.IO) {
-                runCatching { Gits.open(File(path), keyStore.signer(), credentials.asSource()) }
+                runCatching {
+                    Gits.open(File(path), keyStore.signer(), credentials.asSource())
+                        // Commits made by other people are checked against every key
+                        // held, not the one chosen for signing.
+                        .useVerificationKeys(keyStore.verificationKeys())
+                }
             }
             gits = opened.getOrNull()
             state.update {

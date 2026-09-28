@@ -1,6 +1,8 @@
 package com.geno1024.ai.gits.git
 
 import com.geno1024.ai.gits.openpgp.DetachedSignatures
+import com.geno1024.ai.gits.openpgp.SignatureCheck
+import org.bouncycastle.openpgp.PGPPublicKey
 import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.api.ListBranchCommand
 import org.eclipse.jgit.api.errors.TransportException
@@ -15,6 +17,7 @@ import org.eclipse.jgit.transport.CredentialsProvider
 import org.eclipse.jgit.transport.RefSpec
 import org.eclipse.jgit.transport.RemoteConfig
 import org.eclipse.jgit.transport.URIish
+import org.eclipse.jgit.revwalk.RevCommit
 import java.io.Closeable
 import java.io.File
 
@@ -159,6 +162,7 @@ class Gits private constructor(
             message = commit.fullMessage.trimEnd(),
             signedByKeyId = issuer?.keyIdHex,
             signaturePresent = commit.rawGpgSignature != null,
+            signatureCheck = verify(commit),
         )
     }
 
@@ -185,8 +189,39 @@ class Gits private constructor(
                 body = commit.fullMessage.removePrefix(commit.shortMessage).trim('\n'),
                 signaturePresent = commit.rawGpgSignature != null,
                 signedByKeyId = issuer?.keyIdHex,
+                signatureCheck = verify(commit),
             )
         }
+    }
+
+    /**
+     * Checks a commit's signature against the public keys this app holds.
+     *
+     * Returns null when the commit is unsigned, or when no keys were offered at all —
+     * a caller showing "could not check" where the honest answer is "there was nothing
+     * to check with" would be telling a person their commit is suspect.
+     */
+    private fun verify(commit: RevCommit): SignatureCheck? {
+        val signature = commit.rawGpgSignature ?: return null
+        val keys = verificationKeys
+        if (keys.isEmpty()) return null
+        val payload = SignedBytes.of(commit) ?: return null
+        return DetachedSignatures.verify(signature, payload, keys)
+    }
+
+    /**
+     * The public keys available to check signatures with.
+     *
+     * Supplied by whoever opened the repository. Defaults to none, so a repository
+     * opened without keys reports no verdict rather than a false one.
+     */
+    var verificationKeys: List<PGPPublicKey> = emptyList()
+        private set
+
+    /** Offers public keys for checking signatures made by other people. */
+    fun useVerificationKeys(keys: Iterable<PGPPublicKey>): Gits {
+        verificationKeys = keys.toList()
+        return this
     }
 
     /**

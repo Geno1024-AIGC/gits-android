@@ -10,6 +10,7 @@ import com.geno1024.ai.gits.openpgp.SecretKeyRing
 import com.geno1024.ai.gits.openpgp.armored
 import com.geno1024.ai.gits.openpgp.armoredPublicKey
 import com.geno1024.ai.gits.openpgp.wipe
+import org.bouncycastle.openpgp.PGPPublicKey
 import java.io.File
 
 /** A key the app holds, as the settings screen lists it. */
@@ -129,6 +130,17 @@ class KeyStore private constructor(context: Context) {
      * it holds nothing secret.
      */
     fun publicKeyOf(fingerprintHex: String): ByteArray = ringFor(fingerprintHex).armoredPublicKey()
+
+    /**
+     * Every public key held, for checking commits signed by other people.
+     *
+     * All of them, not just the selected one: the selected key is for making signatures,
+     * and holding a key says nothing about who made any given commit. A key that is
+     * expired now may well have signed something while it was current, so nothing here
+     * is filtered on validity — that is judged per signature, against the moment it was
+     * made.
+     */
+    fun verificationKeys(): List<PGPPublicKey> = keyrings().flatMap { it.publicKeys }
 
     /**
      * The armored secret key, for keeping somewhere else.

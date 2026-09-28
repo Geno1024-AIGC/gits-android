@@ -1,5 +1,7 @@
 package com.geno1024.ai.gits.git
 
+import com.geno1024.ai.gits.openpgp.SignatureCheck
+
 /** How a path differs from HEAD, collapsed to what a UI needs to show. */
 enum class ChangeKind {
     /** Tracked and modified, not yet staged. */
@@ -44,6 +46,13 @@ data class CommitResult(
     val message: String,
     val signedByKeyId: String?,
     val signaturePresent: Boolean,
+    /**
+     * Whether the signature was checked against a key, and what came of it.
+     *
+     * Null when the commit is unsigned or when no key was offered, which is not the
+     * same as a signature that failed: see [SignatureCheck.NoKey].
+     */
+    val signatureCheck: SignatureCheck? = null,
 )
 
 /** One entry of `git log`, flattened for display. */
@@ -60,11 +69,19 @@ data class LogEntry(
     /**
      * The key the signature claims to come from, or null when unsigned.
      *
-     * This is a claim read out of the signature packet, not a proof: [signaturePresent]
-     * does not imply the key is known or that the maths checks out. Verifying is a
-     * separate step this layer deliberately does not fake.
+     * Read out of the signature packet, so on its own it is only a claim. What the
+     * claim is worth is [signatureCheck].
      */
     val signedByKeyId: String?,
+    /**
+     * The result of checking the signature against the keys that were offered, or null
+     * when the commit is unsigned.
+     *
+     * Left null when no keys are available rather than being filled in as a failure,
+     * because "nobody could check this" and "this does not check out" call for
+     * different reactions from whoever is reading it.
+     */
+    val signatureCheck: SignatureCheck? = null,
 )
 
 /** A local branch and where it tracks. */

@@ -353,16 +353,20 @@ private fun HistoryPane(state: RepoUiState) {
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
+                val signature = entry.signatureSummary()
                 Text(
                     text = buildString {
                         append(entry.authorName)
-                        if (entry.signaturePresent) {
-                            append(" · signed by ")
-                            append(entry.signedByKeyId ?: "an unknown key")
-                        }
+                        signature?.let { append(" · ${it.text}") }
                     },
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    // A signature that does not verify is the one thing here worth
+                    // interrupting the grey for.
+                    color = when (signature?.trust) {
+                        Trust.GOOD -> MaterialTheme.colorScheme.primary
+                        Trust.BAD -> MaterialTheme.colorScheme.error
+                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                    },
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
