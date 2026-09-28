@@ -161,8 +161,15 @@ class Gits private constructor(
         )
     }
 
-    /** The newest [limit] commits, optionally narrowed to one path. */
+    /**
+     * The newest [limit] commits, optionally narrowed to one path.
+     *
+     * A repository that has never been committed to has no HEAD for `git log` to
+     * start from, which is the normal state of a folder the user just made. That is
+     * an empty history, not a failure.
+     */
     fun log(limit: Int = 100, path: String? = null): List<LogEntry> {
+        if (repository.resolve(Constants.HEAD) == null) return emptyList()
         val command = git.log().setMaxCount(limit)
         path?.let { command.addPath(it) }
         return command.call().map { commit ->
@@ -190,13 +197,14 @@ class Gits private constructor(
             .call()
             .map { ref ->
                 val name = shortName(ref.name)
+                // Absent for a branch with no upstream, which is most of them.
                 val status = BranchTrackingStatus.of(repository, name)
                 BranchInfo(
                     name = name,
                     isCurrent = name == current,
-                    upstreamName = status.remoteTrackingBranch?.let(::shortName),
-                    aheadBy = status.aheadCount,
-                    behindBy = status.behindCount,
+                    upstreamName = status?.remoteTrackingBranch?.let(::shortName),
+                    aheadBy = status?.aheadCount ?: 0,
+                    behindBy = status?.behindCount ?: 0,
                 )
             }
             .sortedWith(compareByDescending<BranchInfo> { it.isCurrent }.thenBy { it.name })
@@ -250,13 +258,25 @@ class Gits private constructor(
 
     // --------------------------------------------------------------- transfers
 
+    /**
+     * The names credentials for [remote] may be given to, taken from what the remote
+     * actually points at rather than from what the caller intended, so that a remote
+     * rewritten underneath us cannot redirect a token somewhere new.
+     */
+    private fun credentialHosts(remote: String): Set<String> =
+        RemoteConfig(repository.config, remote).getURIs()
+            .mapNotNull { it.credentialHost() }
+            .toSet()
+
     /** Updates remote tracking refs without touching the working tree. */
     fun fetch(remote: String = "origin", prune: Boolean = true): List<GraphChange> {
         val command = git.fetch()
             .setRemote(remote)
             .setRemoveDeletedRefs(prune)
             .setProgressMonitor(NullProgressMonitor.INSTANCE)
-        storedCredentials.toProvider()?.let { command.setCredentialsProvider(it) }
+        storedCredentials.toProvider(credentialHosts(remote))?.let {
+            command.setCredentialsProvider(it)
+        }
         return command.call().trackingRefUpdates.map { update ->
             GraphChange(
                 ref = shortName(update.localName),
@@ -282,7 +302,9 @@ class Gits private constructor(
             .setRebase(rebase)
             .setProgressMonitor(NullProgressMonitor.INSTANCE)
         branch?.let { command.setRemoteBranchName(it) }
-        credentials.toProvider()?.let { command.setCredentialsProvider(it) }
+        credentials.toProvider(credentialHosts(remote))?.let {
+            command.setCredentialsProvider(it)
+        }
         val result = command.call()
         if (!result.isSuccessful) {
             throw TransportException("pull did not complete: ${result.fetchResult}")
@@ -311,7 +333,9 @@ class Gits private constructor(
             .setForce(force)
             .setProgressMonitor(NullProgressMonitor.INSTANCE)
         if (pushTags) command.setPushTags()
-        credentials.toProvider()?.let { command.setCredentialsProvider(it) }
+        credentials.toProvider(credentialHosts(remote))?.let {
+            command.setCredentialsProvider(it)
+        }
 
         if (refspecs.isEmpty()) {
             command.setRefSpecs(listOf(RefSpec("${upstreamRef()}:${upstreamRef()}")))
@@ -349,25 +373,22 @@ class Gits private constructor(
     )
 
     private fun readBlame(result: BlameResult): List<BlameLine> {
-        // JGit 7 dropped BlameHunk for a streaming walk, so blame has to be drained
-        // one chunk at a time before the contents can be read back.
-        val sourceLines = buildList {
-            while (true) {
-                val chunk = result.computeNext()
-                if (chunk < 0) break
-                repeat(chunk) { add(it) }
-            }
-        }
+        // BlameCommand already runs the walk to the end and closes the generator, so
+        // the streaming computeNext/lastLength pair finds nothing left to do and blame
+        // came back empty. computeAll is cheap here and leaves the result readable
+        // whether or not it arrived finished.
+        result.computeAll()
         val contents = result.resultContents
-        return sourceLines.mapIndexed { index, sourceLine ->
-            val author = result.getSourceAuthor(sourceLine)
+        return (0 until contents.size()).map { line ->
+            val author = result.getSourceAuthor(line)
+            val commit = result.getSourceCommit(line)
             BlameLine(
-                lineNumber = index + 1,
-                commitId = result.getSourceCommit(sourceLine).name,
+                lineNumber = line + 1,
+                commitId = commit.name,
                 authorName = author.name,
                 authorEmail = author.emailAddress,
-                committedAtEpochMillis = result.getSourceCommit(sourceLine).commitTime * 1000L,
-                text = contents.getString(sourceLine),
+                committedAtEpochMillis = commit.commitTime * 1000L,
+                text = contents.getString(line),
             )
         }
     }
@@ -433,7 +454,9 @@ class Gits private constructor(
             credentials: Credentials = Credentials.None,
             signer: GitsSigner? = null,
         ): Gits {
-            val provider = credentials.toProvider()
+            val provider = credentials.toProvider(
+                setOfNotNull(URIish(uri).credentialHost()),
+            )
             val command = Git.cloneRepository()
                 .setURI(uri)
                 .setDirectory(directory)
