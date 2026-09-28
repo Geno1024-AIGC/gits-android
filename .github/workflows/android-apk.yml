@@ -46,9 +46,9 @@ jobs:
       - uses: android-actions/setup-android@v3
         with:
           cmdline-tools-version: '15859902'
-          packages: |
-            platform-tools
-            platforms;android-37
+          # Space separated, not a yaml list: the action forwards this straight to
+          # sdkmanager as one argument and does not split on newlines.
+          packages: 'platform-tools platforms;android-37'
 
       - name: Assemble debug APK
         run: ./gradlew :app:assembleDebug
