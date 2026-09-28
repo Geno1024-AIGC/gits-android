@@ -99,6 +99,26 @@ fun KeysScreen(onBack: () -> Unit, viewModel: KeysViewModel = viewModel()) {
             )
         },
         snackbarHost = { SnackbarHost(snackbars) },
+        // Adding or importing a key is the whole point of this screen, so the buttons
+        // stay put rather than scrolling away with a list that is empty most of the time.
+        bottomBar = {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                OutlinedButton(onClick = { generating = true }) {
+                    Text(stringResource(R.string.action_new_key))
+                }
+                OutlinedButton(onClick = { pickFile.launch(arrayOf("application/pgp-keys", "text/plain", "*/*")) }) {
+                    Text(stringResource(R.string.action_import_key))
+                }
+                if (state.canSign) {
+                    TextButton(onClick = viewModel::lockAll) { Text(stringResource(R.string.action_lock)) }
+                }
+            }
+        },
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             if (state.keys.isEmpty() && state.accounts.isEmpty()) {
@@ -148,20 +168,6 @@ fun KeysScreen(onBack: () -> Unit, viewModel: KeysViewModel = viewModel()) {
             }
         }
 
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            OutlinedButton(onClick = { generating = true }) {
-                Text(stringResource(R.string.action_new_key))
-            }
-            OutlinedButton(onClick = { pickFile.launch(arrayOf("application/pgp-keys", "text/plain", "*/*")) }) {
-                Text(stringResource(R.string.action_import_key))
-            }
-            if (state.canSign) {
-                TextButton(onClick = viewModel::lockAll) { Text(stringResource(R.string.action_lock)) }
-            }
-        }
     }
 
     if (generating) {
