@@ -3,7 +3,6 @@ package g.gits.android.data
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.os.Build
 import android.provider.DocumentsContract
 import android.util.Log
 import java.io.File
@@ -99,13 +98,9 @@ object DocumentTree {
     }
 
     /** Where the picker should be allowed to start. */
-    fun initialUri(): Uri? =
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            runCatching { DocumentsContract.buildDocumentUri("com.android.externalstorage.documents", "primary:") }
-                .getOrNull()
-        } else {
-            null
-        }
+    fun initialUri(): Uri? = runCatching {
+        DocumentsContract.buildDocumentUri(EXTERNAL_STORAGE, "$PRIMARY:")
+    }.getOrNull()
 
     private const val EXTERNAL_STORAGE = "com.android.externalstorage.documents"
     private const val PRIMARY = "primary"

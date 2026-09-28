@@ -351,7 +351,6 @@ class RepoViewModel(
     }
 
     override fun onCleared() {
-        super.onCleared()
         runCatching { gits?.close() }
         gits = null
     }

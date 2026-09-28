@@ -59,6 +59,17 @@ fun KeysScreen(onBack: () -> Unit, viewModel: KeysViewModel = viewModel()) {
     val snackbars = remember { SnackbarHostState() }
     var generating by remember { mutableStateOf(false) }
     var pendingImport by remember { mutableStateOf<Uri?>(null) }
+    var pendingExport by remember { mutableStateOf<ExportRequest?>(null) }
+
+    // The name is decided here so the exported file is recognisable, and the picker
+    // starts already pointed at it.
+    val exportTarget = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/pgp-keys"),
+    ) { uri ->
+        val request = pendingExport
+        pendingExport = null
+        if (uri != null && request != null) viewModel.exportTo(uri, request)
+    }
 
     // The picker only chooses the file; the passphrase is asked for once one is
     // chosen, so a mispick does not also cost a typed passphrase.
@@ -103,7 +114,14 @@ fun KeysScreen(onBack: () -> Unit, viewModel: KeysViewModel = viewModel()) {
                         SectionHeader(stringResource(R.string.keys_section))
                     }
                     items(state.keys, key = { it.fingerprintHex }) { key ->
-                        KeyRow(key = key, onForget = { viewModel.forget(key) })
+                        KeyRow(
+                            key = key,
+                            signing = key.fingerprintHex == state.selected,
+                            onSelect = { viewModel.select(key) },
+                            onExportPublic = { pendingExport = ExportRequest(key, public = true) },
+                            onExportSecret = { pendingExport = ExportRequest(key, public = false) },
+                            onForget = { viewModel.forget(key) },
+                        )
                         HorizontalDivider()
                     }
                     if (state.accounts.isNotEmpty()) {
@@ -152,6 +170,21 @@ fun KeysScreen(onBack: () -> Unit, viewModel: KeysViewModel = viewModel()) {
             onCreate = { name, email, algorithm, passphrase ->
                 generating = false
                 viewModel.generate(name, email, algorithm, passphrase)
+            },
+        )
+    }
+
+    pendingExport?.let { request ->
+        ExportDialog(
+            key = request.key,
+            public = request.public,
+            onDismiss = { pendingExport = null },
+            onConfirm = { name ->
+                val request = pendingExport
+                pendingExport = null
+                if (request != null) {
+                    exportTarget.launch("${name.ifBlank { request.defaultName() }}.asc")
+                }
             },
         )
     }
@@ -209,7 +242,14 @@ private fun AccountRow(account: StoredAccount, onForget: () -> Unit) {
 }
 
 @Composable
-private fun KeyRow(key: StoredKey, onForget: () -> Unit) {
+private fun KeyRow(
+    key: StoredKey,
+    signing: Boolean,
+    onSelect: () -> Unit,
+    onExportPublic: () -> Unit,
+    onExportSecret: () -> Unit,
+    onForget: () -> Unit,
+) {
     var menu by remember { mutableStateOf(false) }
     Row(
         modifier = Modifier.fillMaxWidth().padding(16.dp),
@@ -232,15 +272,46 @@ private fun KeyRow(key: StoredKey, onForget: () -> Unit) {
                     text = buildString {
                         append(key.algorithm?.name ?: stringResource(R.string.keys_other_algorithm))
                         if (key.canSign) append(" · can sign")
+                        if (!key.isPassphraseProtected) append(" · no passphrase")
                     },
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                if (signing) {
+                    Text(
+                        text = stringResource(R.string.keys_signs_with),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
             }
         }
         Box {
             TextButton(onClick = { menu = true }) { Text("⋯") }
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                if (key.canSign && !signing) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.action_sign_with)) },
+                        onClick = {
+                            menu = false
+                            onSelect()
+                        },
+                    )
+                }
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.action_export_public)) },
+                    onClick = {
+                        menu = false
+                        onExportPublic()
+                    },
+                )
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.action_export_secret)) },
+                    onClick = {
+                        menu = false
+                        onExportSecret()
+                    },
+                )
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.action_remove_key)) },
                     onClick = {
@@ -251,6 +322,66 @@ private fun KeyRow(key: StoredKey, onForget: () -> Unit) {
             }
         }
     }
+}
+
+/** Which key is about to be written out, and whether it is the secret half. */
+data class ExportRequest(val key: StoredKey, val public: Boolean) {
+    fun defaultName(): String = (if (public) "public" else "secret") + "-" + key.fingerprintHex.takeLast(16)
+}
+
+/**
+ * Names the file, and says plainly what is in it.
+ *
+ * An export is a copy of a signing key leaving the only place this app is careful about
+ * it, so the secret case is labelled rather than left for someone to find out later.
+ */
+@Composable
+private fun ExportDialog(
+    key: StoredKey,
+    public: Boolean,
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit,
+) {
+    var name by remember { mutableStateOf(ExportRequest(key, public).defaultName()) }
+    val unprotected = !public && !key.isPassphraseProtected
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.action_export_key)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text(stringResource(R.string.field_file_name)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Text(
+                    text = stringResource(
+                        if (public) R.string.export_public_detail else R.string.export_secret_detail,
+                        key.userId.ifBlank { stringResource(R.string.keys_unnamed) },
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                if (unprotected) {
+                    Text(
+                        text = stringResource(R.string.export_secret_unprotected),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onConfirm(name) },
+                enabled = name.isNotBlank(),
+            ) { Text(stringResource(R.string.action_save)) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+        },
+    )
 }
 
 @Composable

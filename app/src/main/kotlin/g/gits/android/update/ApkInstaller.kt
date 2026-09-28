@@ -10,6 +10,7 @@ import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import android.util.Log
+import androidx.annotation.RequiresApi
 import java.io.File
 
 /**
@@ -45,11 +46,7 @@ object ApkInstaller {
      * downloading tens of megabytes only to discover it cannot be used.
      */
     fun canInstallPackages(activity: Activity): Boolean =
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            activity.packageManager.canRequestPackageInstalls()
-        } else {
-            true
-        }
+        activity.packageManager.canRequestPackageInstalls()
 
     private fun sessionInstall(activity: Activity, apk: File) {
         val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)
@@ -70,6 +67,7 @@ object ApkInstaller {
      * A copy in the user's Downloads folder is left behind on purpose: it is the only
      * one of these routes where the file remains reachable if the install is refused.
      */
+    @RequiresApi(Build.VERSION_CODES.Q)
     private fun installViaDownloads(activity: Activity, apk: File, onResult: (String) -> Unit) {
         val resolver = activity.contentResolver
         val values = ContentValues().apply {

@@ -40,6 +40,17 @@ class NoSigningKeyException(message: String) : IllegalStateException(message)
 class GitsSigner(
     private val keyrings: List<SecretKeyRing>,
     private val passphrases: PassphraseSource,
+    /**
+     * The key to sign with when the repository does not name one.
+     *
+     * A repository's own `user.signingkey` still wins, because that is what the person
+     * who made the repository asked for. This is for the far more common case of a
+     * repository that names nothing, where the choice would otherwise fall to whichever
+     * key happened to be first — an answer nobody can see, let alone change. It is not
+     * written into the repository's config, since a setting this app holds is not
+     * something other tools should inherit as though the user had set it.
+     */
+    private val fallbackSpec: String? = null,
 ) : Signer {
 
     private val lock = ReentrantLock()
@@ -105,10 +116,20 @@ class GitsSigner(
 
     /**
      * JGit passes null whenever `user.signingkey` is unset, which is the normal state
-     * of a repository this app just created. Treating that as "use my only key" is
-     * what a single-key store should do.
+     * of a repository this app just created. Treating that as "use the one I was told
+     * to prefer" is what a key store with a choice in it should do.
+     *
+     * A preference that names a key this app does not hold is treated as no preference
+     * at all. It can be stale — a key removed by hand, or a store that lost the file —
+     * and a stale setting is no reason to leave the user unable to sign.
      */
-    private fun String?.asKeySpec(): String? = this?.trim()?.takeIf { it.isNotEmpty() }
+    private fun String?.asKeySpec(): String? {
+        val asked = this?.trim()?.takeIf { it.isNotEmpty() }
+        if (asked != null) return asked
+        val preferred = fallbackSpec?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+        val held = keyrings.any { ring -> ring.signingKeys.any { matches(it, preferred) } }
+        return preferred.takeIf { held }
+    }
 
     private fun matches(key: KeyInfo, needle: String): Boolean =
         key.fingerprintHex.equals(needle, ignoreCase = true) ||

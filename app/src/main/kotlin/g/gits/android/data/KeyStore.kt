@@ -8,6 +8,7 @@ import g.gits.openpgp.KeyGeneration
 import g.gits.openpgp.KeyInfo
 import g.gits.openpgp.SecretKeyRing
 import g.gits.openpgp.armored
+import g.gits.openpgp.armoredPublicKey
 import g.gits.openpgp.wipe
 import java.io.File
 
@@ -18,6 +19,8 @@ data class StoredKey(
     /** Null for an algorithm this app does not generate, which an import may bring. */
     val algorithm: KeyAlgorithm?,
     val canSign: Boolean,
+    /** False for a key imported without one, which matters before it is copied anywhere. */
+    val isPassphraseProtected: Boolean = true,
 )
 
 /**
@@ -33,6 +36,9 @@ data class StoredKey(
 class KeyStore private constructor(context: Context) {
 
     private val directory = File(context.filesDir, "keys").also { it.mkdirs() }
+    private val settings = SharedPreferencesSettings(
+        context.getSharedPreferences("gits-keys", Context.MODE_PRIVATE),
+    )
 
     /**
      * Passphrases for the session, keyed by fingerprint. A key with no entry here is
@@ -53,9 +59,23 @@ class KeyStore private constructor(context: Context) {
                 userId = key.primaryUserId ?: ring.primaryUserIds.firstOrNull().orEmpty(),
                 algorithm = KeyAlgorithm.of(key.algorithm),
                 canSign = key.isSigningKey,
+                isPassphraseProtected = key.isPassphraseProtected,
             )
         }
     }
+
+    /**
+     * The key commits are signed with when the repository names none.
+     *
+     * Kept as a fingerprint rather than left to the order keys happen to be read in:
+     * with two keys, "whichever comes first" is a choice the user cannot see or undo.
+     */
+    var selected: String?
+        get() = settings.string(KEY_SELECTED)
+        set(value) = settings.write(
+            strings = if (value == null) emptyMap() else mapOf(KEY_SELECTED to value),
+            removed = if (value == null) setOf(KEY_SELECTED) else emptySet(),
+        )
 
     /**
      * A signer over every stored key, or null when there is nothing to sign with.
@@ -68,6 +88,7 @@ class KeyStore private constructor(context: Context) {
         if (keyrings.none { it.signingKeys.isNotEmpty() }) return null
         return GitsSigner(
             keyrings = keyrings,
+            fallbackSpec = selected,
             passphrases = PassphraseSource { key ->
                 unlocked[key.fingerprintHex]
                     ?: throw IllegalStateException(
@@ -101,7 +122,25 @@ class KeyStore private constructor(context: Context) {
         return rings.flatMap { ring -> ring.keys.map { it.toStored(ring) } }
     }
 
+    /**
+     * The armored public key, as `gpg --armor --export` writes it.
+     *
+     * This is the file that lets anyone else check the signatures this key makes, and
+     * it holds nothing secret.
+     */
+    fun publicKeyOf(fingerprintHex: String): ByteArray = ringFor(fingerprintHex).armoredPublicKey()
+
+    /**
+     * The armored secret key, for keeping somewhere else.
+     *
+     * Handed back exactly as it is held, which means a key that was imported without a
+     * passphrase leaves without one too. The caller is told whether that is the case
+     * and is expected to say so.
+     */
+    fun secretKeyOf(fingerprintHex: String): ByteArray = ringFor(fingerprintHex).ring.armored()
+
     fun forget(fingerprintHex: String) {
+        if (selected.equals(fingerprintHex, ignoreCase = true)) selected = null
         fileFor(fingerprintHex).delete()
         unlocked.remove(fingerprintHex)?.let { it.fill(' ') }
         cached = null
@@ -132,15 +171,22 @@ class KeyStore private constructor(context: Context) {
 
     private fun fileFor(fingerprintHex: String) = File(directory, "$fingerprintHex$SUFFIX")
 
+    private fun ringFor(fingerprintHex: String): SecretKeyRing =
+        keyrings().firstOrNull { ring ->
+            ring.keys.any { it.fingerprintHex.equals(fingerprintHex, ignoreCase = true) }
+        } ?: error("This app holds no key ${fingerprintHex.takeLast(16)}.")
+
     private fun KeyInfo.toStored(ring: SecretKeyRing) = StoredKey(
         fingerprintHex = fingerprintHex,
         userId = primaryUserId ?: ring.primaryUserIds.firstOrNull().orEmpty(),
         algorithm = KeyAlgorithm.of(algorithm),
         canSign = isSigningKey,
+        isPassphraseProtected = isPassphraseProtected,
     )
 
     companion object {
         private const val SUFFIX = ".asc"
+        private const val KEY_SELECTED = "signing.key"
 
         @Volatile
         private var instance: KeyStore? = null

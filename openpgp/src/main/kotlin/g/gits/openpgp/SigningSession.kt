@@ -1,5 +1,6 @@
 package g.gits.openpgp
 
+import org.bouncycastle.bcpg.SecretKeyPacket
 import org.bouncycastle.openpgp.PGPPrivateKey
 import org.bouncycastle.openpgp.PGPSecretKey
 import org.bouncycastle.openpgp.PGPSecretKeyRing
@@ -53,6 +54,7 @@ internal fun PGPSecretKey.info(master: PGPSecretKeyRing): KeyInfo {
         isSigningKey = publicKey.canSign(),
         isEncryptionKey = publicKey.isEncryptionKey,
         creationTime = publicKey.creationTime,
+        isPassphraseProtected = getS2KUsage() != SecretKeyPacket.USAGE_NONE,
     )
 }
 

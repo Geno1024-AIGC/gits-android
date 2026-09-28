@@ -24,6 +24,7 @@ data class KeysUiState(
     val message: String? = null,
     val canSign: Boolean = false,
     val accounts: List<StoredAccount> = emptyList(),
+    val selected: String? = null,
 )
 
 /**
@@ -49,7 +50,12 @@ class KeysViewModel(application: Application) : AndroidViewModel(application) {
         val keys = withContext(Dispatchers.IO) { keyStore.keys() }
         val accounts = withContext(Dispatchers.IO) { credentials.accounts() }
         state.update {
-            it.copy(keys = keys, canSign = keys.any(StoredKey::canSign), accounts = accounts)
+            it.copy(
+                keys = keys,
+                canSign = keys.any(StoredKey::canSign),
+                accounts = accounts,
+                selected = keyStore.selected,
+            )
         }
     }
 
@@ -75,6 +81,26 @@ class KeysViewModel(application: Application) : AndroidViewModel(application) {
         keyStore.importArmored(bytes, passphrase)
     }
 
+    fun select(key: StoredKey) = run("Could not use that key") { keyStore.selected = key.fingerprintHex }
+
+    /**
+     * Writes a key out to a file the user named.
+     *
+     * Goes through the content resolver rather than to a path, because the file may be
+     * anywhere the user chose and this app has no business assuming otherwise.
+     */
+    fun exportTo(uri: Uri, request: ExportRequest) = run("Could not write the key") {
+        val bytes = if (request.public) {
+            keyStore.publicKeyOf(request.key.fingerprintHex)
+        } else {
+            keyStore.secretKeyOf(request.key.fingerprintHex)
+        }
+        getApplication<Application>().contentResolver
+            .openOutputStream(uri)
+            ?.use { it.write(bytes) }
+            ?: error("That file could not be opened for writing.")
+    }
+
     fun forget(key: StoredKey) = run("Could not remove the key") { keyStore.forget(key.fingerprintHex) }
 
     fun lockAll() = run("Could not lock the keys") { keyStore.lockAll() }
@@ -96,7 +122,6 @@ class KeysViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     override fun onCleared() {
-        super.onCleared()
         // Locking on the way out means an unlocked key does not outlive the screen
         // that unlocked it. Tokens stay, because they are meant to.
         keyStore.lockAll()

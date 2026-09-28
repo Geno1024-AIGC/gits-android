@@ -18,6 +18,13 @@ data class KeyInfo(
     val isSigningKey: Boolean,
     val isEncryptionKey: Boolean,
     val creationTime: Date,
+    /**
+     * Whether the private material is under a passphrase.
+     *
+     * An import may bring a key whose secret is not protected, and that is worth
+     * knowing before it is copied anywhere else.
+     */
+    val isPassphraseProtected: Boolean = true,
 ) {
     val fingerprintHex: String get() = fingerprint.toHex().uppercase()
     val masterFingerprintHex: String get() = masterFingerprint.toHex().uppercase()

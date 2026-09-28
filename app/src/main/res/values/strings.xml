@@ -51,6 +51,18 @@
     <string name="repo_no_signing_key">This app holds no key that can sign yet, so commits would be unsigned.</string>
     <string name="repo_no_identity">Git needs a name and an email before it can commit</string>
     <string name="action_check_update">Check for updates</string>
+    <string name="keys_signs_with">Signs commits with this key</string>
+    <string name="action_sign_with">Sign commits with this</string>
+    <string name="action_export_key">Export key</string>
+    <string name="action_export_public">Export public key</string>
+    <string name="action_export_secret">Export secret key</string>
+    <string name="field_file_name">File name</string>
+    <string name="export_public_detail">The public key for %1$s. Hand this to anyone who wants
+        to check the signatures it makes; it cannot sign anything.</string>
+    <string name="export_secret_detail">The secret key for %1$s. Anyone holding this file can sign
+        as you. Keep it somewhere only you can reach.</string>
+    <string name="export_secret_unprotected">This key has no passphrase, so the file will be as open as
+        the key itself.</string>
     <string name="action_pick_parent">Choose where to put it</string>
     <string name="create_no_parent">Nowhere yet \u2014 tap the folder button to pick one.</string>
 
