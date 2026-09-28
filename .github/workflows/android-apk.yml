@@ -4,7 +4,7 @@ name: Android APK
 # so there is always exactly one download available.
 on:
   push:
-    branches: [main]
+    branches: [master]
   workflow_dispatch:
 
 permissions:
