@@ -1,5 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Gits</string>
-    <string name="placeholder_tagline">Gits for Android — signing work in progress.</string>
+
+    <string name="action_back">Back</string>
+    <string name="action_refresh">Refresh</string>
+    <string name="action_ok">OK</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_save">Save</string>
+    <string name="action_create">Create</string>
+    <string name="action_add">Add</string>
+    <string name="action_forget">Remove from this list</string>
+    <string name="action_open_repository">Open a repository</string>
+    <string name="action_open">Open</string>
+    <string name="action_pull">Pull</string>
+    <string name="action_push">Push</string>
+    <string name="action_create_repository">New repository</string>
+    <string name="action_remove_remote">Remove this remote</string>
+
+    <string name="error_title">Something went wrong</string>
+
+    <string name="field_folder">Folder</string>
+    <string name="field_initial_branch">First branch</string>
+
+    <string name="home_empty_title">No repositories yet</string>
+    <string name="home_empty_detail">Create one, or tap the button to make a new folder into a repository.</string>
+
+    <string name="home_folder_hint">Leave a name to use the app\'s own folder; type a full path to use your own.</string>
+    <string name="repo_no_branch">no branch</string>
+    <string name="repo_no_identity">Git needs a name and an email before it can commit</string>
 </resources>
