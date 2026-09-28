@@ -40,10 +40,15 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
+      # v3 still defaults to installing "tools platform-tools", and the obsolete
+      # `tools` package was removed from the SDK repository, so the default aborts
+      # the whole run. Pin the packages we actually need instead.
       - uses: android-actions/setup-android@v3
-
-      - name: Accept SDK licenses
-        run: yes | sdkmanager --licenses > /dev/null 2>&1 || true
+        with:
+          cmdline-tools-version: '15859902'
+          packages: |
+            platform-tools
+            platforms;android-37
 
       - name: Assemble debug APK
         run: ./gradlew :app:assembleDebug
