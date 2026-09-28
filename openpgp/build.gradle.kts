@@ -1,4 +1,4 @@
-import g.gits.gradle.Versioning
+import com.geno1024.ai.gits.gradle.Versioning
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -7,7 +7,7 @@ plugins {
 
 val stamp = Versioning.stamp(rootDir, projectDir)
 
-group = "g.gits"
+group = "com.geno1024.ai.gits"
 version = stamp.versionName
 
 kotlin {

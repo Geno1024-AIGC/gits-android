@@ -1,4 +1,4 @@
-import g.gits.gradle.Versioning
+import com.geno1024.ai.gits.gradle.Versioning
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -9,11 +9,11 @@ plugins {
 val stamp = Versioning.stamp(rootDir, projectDir)
 
 android {
-    namespace = "g.gits.android"
+    namespace = "com.geno1024.ai.gits"
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "g.gits.android"
+        applicationId = "com.geno1024.ai.gits"
         minSdk = 26
         targetSdk = 37
         versionCode = stamp.versionCode

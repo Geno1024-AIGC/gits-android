@@ -28,7 +28,7 @@
             android:name=".update.InstallReceiver"
             android:exported="false">
             <intent-filter>
-                <action android:name="g.gits.android.INSTALL_RESULT" />
+                <action android:name="com.geno1024.ai.gits.INSTALL_RESULT" />
             </intent-filter>
         </receiver>
     </application>

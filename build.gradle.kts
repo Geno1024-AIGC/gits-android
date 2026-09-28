@@ -6,6 +6,6 @@ plugins {
 }
 
 tasks.register("printVersion") {
-    val stamp = g.gits.gradle.Versioning.stamp(rootDir, projectDir)
+    val stamp = com.geno1024.ai.gits.gradle.Versioning.stamp(rootDir, projectDir)
     doLast { println(stamp.versionName) }
 }
