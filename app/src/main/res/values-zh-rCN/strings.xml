@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Gits</string>
+
+    <string name="action_back">返回</string>
+    <string name="action_refresh">刷新</string>
+    <string name="action_ok">好</string>
+    <string name="action_cancel">取消</string>
+    <string name="action_create">创建</string>
+    <string name="action_add">添加</string>
+    <string name="action_forget">从此列表移除</string>
+    <string name="action_open_repository">打开仓库</string>
+    <string name="action_open">打开</string>
+    <string name="action_pull">拉取</string>
+    <string name="action_push">推送</string>
+    <string name="action_create_repository">新建仓库</string>
+    <string name="action_remove_remote">移除此远程</string>
+
+    <string name="error_title">出了点问题</string>
+
+    <string name="field_folder">文件夹</string>
+    <string name="field_initial_branch">初始分支</string>
+
+    <string name="home_empty_title">还没有仓库</string>
+    <string name="home_empty_detail">创建一个，或者点按钮把新文件夹变成仓库。</string>
+
+    <string name="home_folder_hint">留空则使用应用自己的文件夹；填完整路径则使用你自己的。</string>
+    <string name="repo_no_branch">无分支</string>
+    <string name="credentials_title">登录 %1$s</string>
+    <string name="credentials_detail">%1$s 需要用户名和密钥。它会加密保存，且只提供给 %1$s。</string>
+    <string name="field_username">用户名</string>
+    <string name="field_token">令牌或密码</string>
+    <string name="keys_section">签名密钥</string>
+    <string name="accounts_section">已登录的主机</string>
+    <string name="accounts_no_name">未提供名称</string>
+    <string name="action_forget_all_accounts">从所有地方退出登录</string>
+    <string name="keys_title">签名密钥</string>
+    <string name="keys_empty">此应用尚未持有任何密钥。可以创建一个，或导入 armored 密钥文件。</string>
+    <string name="keys_unnamed">未命名密钥</string>
+    <string name="keys_other_algorithm">其他算法</string>
+    <string name="keys_passphrase_optional_note">两个框都留空即可创建无密码密钥，它会以未加密方式保存。</string>
+    <string name="keys_passphrase_mismatch">两次输入的密码不一致。</string>
+    <string name="action_new_key">新建密钥</string>
+    <string name="action_import_key">导入密钥</string>
+    <string name="action_remove_key">删除此密钥</string>
+    <string name="action_lock">锁定</string>
+    <string name="field_name">姓名</string>
+    <string name="field_email">邮箱</string>
+    <string name="field_passphrase">密码</string>
+    <string name="field_passphrase_optional">密码（若密钥没有密码则留空）</string>
+    <string name="field_passphrase_again">再输一次密码</string>
+    <string name="repo_no_signing_key">此应用尚无可用于签名的密钥，因此提交将不签名。</string>
+    <string name="repo_no_identity">提交前需要姓名和邮箱</string>
+    <string name="action_check_update">检查更新</string>
+    <string name="keys_signs_with">使用此密钥签名提交</string>
+    <string name="keys_can_sign">可签名</string>
+    <string name="keys_no_passphrase">无密码</string>
+    <string name="action_sign_with">用此密钥签名提交</string>
+    <string name="action_export_key">导出密钥</string>
+    <string name="action_export_public">导出公钥</string>
+    <string name="action_export_secret">导出私钥</string>
+    <string name="field_file_name">文件名</string>
+    <string name="export_public_detail">%1$s 的公钥。交给任何想校验它所产生的签名的人；它无法签名任何东西。</string>
+    <string name="export_secret_detail">%1$s 的私钥。任何拿到此文件的人都能以你的身份签名。请放在只有你能取到的地方。</string>
+    <string name="export_secret_unprotected">此密钥没有密码，因此文件会和密钥本身一样敞开。</string>
+    <string name="action_pick_parent">选择存放位置</string>
+    <string name="create_no_parent">还没有位置 —— 点文件夹按钮来选一个。</string>
+
+    <string name="update_title">更新</string>
+    <string name="update_installed_label">已安装</string>
+    <string name="update_unknown_version">未知</string>
+    <string name="update_available_label">更新的版本</string>
+    <string name="update_checking">正在检查是否有新版本…</string>
+    <string name="update_up_to_date">没有比这更新的已发布版本。</string>
+    <string name="update_download">下载</string>
+    <string name="update_downloading">下载中 —— %1$s</string>
+    <string name="update_install">安装</string>
+    <string name="update_not_now">暂不</string>
+    <string name="update_source_heading">下载来源</string>
+    <string name="update_feed_note">有哪些版本始终以 GitHub 为准。镜像只接管下载环节，所以镜像无法让此应用安装与 GitHub 上所标不同的版本。</string>
+    <string name="update_channel">正在安装</string>
+    <string name="update_installed">已安装。新版本可以使用了。</string>
+    <string name="update_install_canceled">安装已取消。</string>
+    <string name="update_install_conflict">安装被拒绝，最可能是因为该版本是用不同密钥签名的。</string>
+    <string name="update_install_invalid">下载的文件不是有效的安装包。</string>
+    <string name="update_install_incompatible">该版本无法在此设备上运行。</string>
+    <string name="update_install_no_space">空间不足，无法安装该版本。</string>
+    <string name="update_install_no_activity">此设备上没有能打开安装包的应用，因此无法从这里安装。文件已保存到下载目录。</string>
+    <string name="update_install_timeout">安装耗时过长，已放弃。</string>
+    <string name="update_install_blocked">此设备上的某项设置拒绝允许本次安装。</string>
+    <string name="update_install_failed">安装未完成（代码 %1$d）。</string>
+    <string name="action_save">保存</string>
+    <string name="settings_title">设置</string>
+    <string name="settings_section_you">你</string>
+    <string name="settings_section_app">应用</string>
+    <string name="settings_identity">姓名和邮箱</string>
+    <string name="settings_identity_unset">尚未设置</string>
+    <string name="settings_identity_note">用于新建提交。与你的签名密钥分开保存，因为你完全可能以一个身份提交、以另一个身份签名。</string>
+    <string name="settings_no_keys">尚无密钥</string>
+    <string name="settings_keys_no_selection">持有 %1$d 个，未选择签名用</string>
+    <string name="settings_keys_selected">持有 %1$d 个</string>
+    <string name="settings_update_subtitle">检查并安装新版本</string>
+</resources>

@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -27,6 +28,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -53,6 +55,7 @@ private fun UpdatePanel(
     modifier: Modifier = Modifier,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val noActivityMessage = stringResource(R.string.update_install_no_activity)
     val context = LocalContext.current
 
     Box(modifier = modifier.fillMaxSize()) {
@@ -68,8 +71,16 @@ private fun UpdatePanel(
                     state = state,
                     onDownload = viewModel::download,
                     onInstall = { apk ->
-                        val activity = context.findActivity() ?: return@ReleaseCard
-                        ApkInstaller.install(activity, apk, viewModel::showMessage)
+                        // A tap that finds no activity used to return here and vanish.
+                        // It is a genuine failure, and the one that matters most is the
+                        // device with nothing able to open an APK, which is exactly when
+                        // a person needs to be told rather than left tapping.
+                        val activity = context.findActivity()
+                        if (activity == null) {
+                            viewModel.showMessage(noActivityMessage)
+                        } else {
+                            ApkInstaller.install(activity, apk, viewModel::showMessage)
+                        }
                     },
                     onDismissNotice = viewModel::dismiss,
                 )
@@ -101,6 +112,11 @@ fun UpdateScreen(
     viewModel: UpdateViewModel = viewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+
+    // The ViewModel is kept by the navigation entry, so a return visit finds the same
+    // one that was built the first time. Checking has to be asked for again from here,
+    // or the screen would show a stale answer while looking like it had just looked.
+    LaunchedEffect(Unit) { viewModel.recheckIfStale() }
 
     Scaffold(
         topBar = {
@@ -155,17 +171,29 @@ private fun ReleaseCard(
             style = MaterialTheme.typography.titleSmall,
         )
 
-        when {
-            state.checking -> Row(verticalAlignment = Alignment.CenterVertically) {
-                CircularProgressIndicator()
+        // A spinner alone, replacing the card, is what made a slow check look like a
+        // dead screen. The previous answer stays, with the check shown as a side note.
+        if (state.checking) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                CircularProgressIndicator(modifier = Modifier.height(16.dp))
+                Text(
+                    text = stringResource(R.string.update_checking),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
+        }
 
-            release == null -> Text(
+        when {
+            release == null && !state.checking -> Text(
                 text = stringResource(R.string.update_up_to_date),
                 style = MaterialTheme.typography.bodyMedium,
             )
 
-            else -> {
+            else -> if (release != null) {
                 Text(text = release.name, style = MaterialTheme.typography.bodyLarge)
                 Text(
                     text = release.version?.toString().orEmpty(),

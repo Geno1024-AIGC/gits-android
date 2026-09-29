@@ -45,7 +45,35 @@ class UpdateViewModel(application: Application) : AndroidViewModel(application) 
         check()
     }
 
+    /**
+     * How long an offer stays worth showing, and how a repeat visit is treated.
+     *
+     * A build is announced once. After that, coming back to this screen should not
+     * re-announce it, and it should not need a tap either: the offer is simply still
+     * here, listed under the newest build, and a check that found nothing worth
+     * announcing is a check the person never had to ask for.
+     */
+    private var lastCheckedAt = 0L
+
+    private companion object {
+        /** Long enough to catch a new build, short enough not to nag. */
+        const val REVISIT_AFTER_MILLIS = 30 * 60 * 1000L
+    }
+
+    /**
+     * Re-checks when the last one was long enough ago to have missed something.
+     *
+     * Called when the screen appears rather than on construction, because the ViewModel
+     * is kept by the navigation entry and outlives any single visit: without this,
+     * coming back after a while would show whatever was true when it was first built,
+     * which is how a check ends up looking like it did nothing.
+     */
+    fun recheckIfStale(nowMillis: Long = System.currentTimeMillis()) {
+        if (nowMillis - lastCheckedAt >= REVISIT_AFTER_MILLIS) check()
+    }
+
     fun check() = viewModelScope.launch {
+        lastCheckedAt = System.currentTimeMillis()
         state.update { it.copy(checking = true, error = null, message = null) }
         val outcome = withContext(Dispatchers.IO) { runCatching { Updater.fetchReleases() } }
         outcome

@@ -277,8 +277,12 @@ private fun KeyRow(
                 Text(
                     text = buildString {
                         append(key.algorithm?.name ?: stringResource(R.string.keys_other_algorithm))
-                        if (key.canSign) append(" · can sign")
-                        if (!key.isPassphraseProtected) append(" · no passphrase")
+                        // The separators stay in the code so a translator only ever has
+                        // to hand back the words, not decide where they sit.
+                        if (key.canSign) append(" · " + stringResource(R.string.keys_can_sign))
+                        if (!key.isPassphraseProtected) {
+                            append(" · " + stringResource(R.string.keys_no_passphrase))
+                        }
                     },
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -293,7 +297,7 @@ private fun KeyRow(
             }
         }
         Box {
-            TextButton(onClick = { menu = true }) { Text("⋯") }
+            TextButton(onClick = { menu = true }) { Text(KEY_MENU_GLYPH) }
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                 if (key.canSign && !signing) {
                     DropdownMenuItem(
@@ -510,3 +514,6 @@ private fun PassphraseDialog(
         },
     )
 }
+
+/** Three dots, used as a menu affordance. Not a word, so not translated. */
+private const val KEY_MENU_GLYPH = "\u22EF"
