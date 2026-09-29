@@ -1,21 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  A branching diagram, in the idiom Git established: filled commit nodes joined by a
+  line that turns at a corner rather than crossing, so the shape reads as history
+  splitting in two instead of a scatter of dots.
+
+  Two details are deliberate. Every stroke stops a node-radius short of whatever it
+  points at, which keeps the tip ring hollow and keeps the fork from fusing into a
+  blob. And the whole figure is kept inside the circle a launcher actually shows, with
+  the node radii accounted for rather than just their centres, so nothing is clipped
+  by the most aggressive masks.
+-->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+
+    <!-- Trunk, running down the left. -->
     <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M70.5,31.5m-6,0a6,6 0,1 1,12 0a6,6 0,1 1,-12 0" />
+        android:pathData="M36,35 L36,71"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="5.5"
+        android:strokeLineCap="round" />
+    <!-- Trunk turning right along the bottom. -->
     <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M37.5,54m-6,0a6,6 0,1 1,12 0a6,6 0,1 1,-12 0" />
+        android:pathData="M36,71 L71,71"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="5.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <!-- The branch leaving the fork, held clear of its node. -->
     <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M70.5,76.5m-6,0a6,6 0,1 1,12 0a6,6 0,1 1,-12 0" />
+        android:pathData="M36,52 L46.2,52"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="5.5"
+        android:strokeLineCap="round" />
     <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M63,36.5L43.5,51.5" />
+        android:pathData="M46.2,52 L55,52"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="5.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <!-- Turning up, then across, stopping short of the ring. -->
     <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M43.5,58.5L63,73.5" />
+        android:pathData="M55,52 L55,35"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="5.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <path
+        android:pathData="M55,35 L59.8,35"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="5.5"
+        android:strokeLineCap="round" />
+
+    <!-- The commit the branch departs from. -->
+    <path
+        android:pathData="M36,52m-6.2,0a6.2,6.2 0,1 1,12.4 0a6.2,6.2 0,1 1,-12.4 0"
+        android:fillColor="#FFFFFF" />
+    <!-- The tip of the trunk. -->
+    <path
+        android:pathData="M71,71m-6.2,0a6.2,6.2 0,1 1,12.4 0a6.2,6.2 0,1 1,-12.4 0"
+        android:fillColor="#FFFFFF" />
+    <!-- The tip of the branch, hollow the way Git draws the newer end. -->
+    <path
+        android:pathData="M71,35m-7.2,0a7.2,7.2 0,1 0,14.4 0a7.2,7.2 0,1 0,-14.4 0"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="4" />
 </vector>
