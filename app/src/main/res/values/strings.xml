@@ -6,7 +6,6 @@
     <string name="action_refresh">Refresh</string>
     <string name="action_ok">OK</string>
     <string name="action_cancel">Cancel</string>
-    <string name="action_save">Save</string>
     <string name="action_create">Create</string>
     <string name="action_add">Add</string>
     <string name="action_forget">Remove from this list</string>
@@ -92,4 +91,16 @@
     <string name="update_install_timeout">The install took too long and was given up on.</string>
     <string name="update_install_blocked">Something on this device refused to allow the install.</string>
     <string name="update_install_failed">The install did not finish (code %1$d).</string>
+    <string name="action_save">Save</string>
+    <string name="settings_title">Settings</string>
+    <string name="settings_section_you">You</string>
+    <string name="settings_section_app">App</string>
+    <string name="settings_identity">Name and email</string>
+    <string name="settings_identity_unset">Not set yet</string>
+    <string name="settings_identity_note">Used for new commits. Kept separate from your signing
+        key, since you may well commit as one person and sign as another.</string>
+    <string name="settings_no_keys">No keys yet</string>
+    <string name="settings_keys_no_selection">%1$d held, none chosen for signing</string>
+    <string name="settings_keys_selected">%1$d held</string>
+    <string name="settings_update_subtitle">Check for and install newer builds</string>
 </resources>

@@ -46,6 +46,64 @@ import com.geno1024.ai.gits.update.Updater
  * The source is offered as a choice rather than a fallback because whether GitHub's
  * file hosts are reachable is a property of the network a person is on, not of the app.
  */
+/**
+ * The update panel, without a screen around it.
+ *
+ * Split out from [UpdateScreen] so settings can hold the same panel inline. Two copies
+ * of this logic would drift, and the update flow is exactly the thing that must not
+ * differ between the places a person can reach it from.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun UpdatePanel(
+    viewModel: UpdateViewModel,
+    modifier: Modifier = Modifier,
+    showInstalled: Boolean = true,
+) {
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+
+    Box(modifier = modifier.fillMaxSize()) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            if (showInstalled) {
+                item { InstalledRow(state.installed) }
+            }
+
+            item {
+                ReleaseCard(
+                    state = state,
+                    onDownload = viewModel::download,
+                    onInstall = { apk ->
+                        val activity = context.findActivity() ?: return@ReleaseCard
+                        ApkInstaller.install(activity, apk, viewModel::showMessage)
+                    },
+                    onDismissNotice = viewModel::dismiss,
+                )
+            }
+
+            item { SourceHeading() }
+
+            items(Updater.SOURCES, key = { it.id }) { source ->
+                SourceRow(
+                    source = source,
+                    selected = source.id == state.source.id,
+                    onSelect = { viewModel.setSource(source) },
+                )
+            }
+
+            item { FeedNote() }
+        }
+
+        state.error?.let { message ->
+            ErrorBar(message = message, onDismiss = viewModel::dismissError)
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UpdateScreen(
@@ -53,7 +111,6 @@ fun UpdateScreen(
     viewModel: UpdateViewModel = viewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val context = LocalContext.current
 
     Scaffold(
         topBar = {
@@ -75,43 +132,7 @@ fun UpdateScreen(
             )
         },
     ) { padding ->
-        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                item { InstalledRow(state.installed) }
-
-                item {
-                    ReleaseCard(
-                        state = state,
-                        onDownload = viewModel::download,
-                        onInstall = { apk ->
-                            val activity = context.findActivity() ?: return@ReleaseCard
-                            ApkInstaller.install(activity, apk, viewModel::showMessage)
-                        },
-                        onDismissNotice = viewModel::dismiss,
-                    )
-                }
-
-                item { SourceHeading() }
-
-                items(Updater.SOURCES, key = { it.id }) { source ->
-                    SourceRow(
-                        source = source,
-                        selected = source.id == state.source.id,
-                        onSelect = { viewModel.setSource(source) },
-                    )
-                }
-
-                item { FeedNote() }
-            }
-
-            state.error?.let { message ->
-                ErrorBar(message = message, onDismiss = viewModel::dismissError)
-            }
-        }
+        UpdatePanel(viewModel = viewModel, modifier = Modifier.padding(padding))
     }
 }
 

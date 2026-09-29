@@ -8,14 +8,15 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.geno1024.ai.gits.ui.home.HomeScreen
 import com.geno1024.ai.gits.ui.keys.KeysScreen
+import com.geno1024.ai.gits.ui.settings.SettingsScreen
 import com.geno1024.ai.gits.ui.repo.RepoScreen
-import com.geno1024.ai.gits.ui.update.UpdateScreen
 import java.io.File
 
 private object Routes {
     const val HOME = "home"
     const val REPO = "repo"
     const val KEYS = "keys"
+    const val SETTINGS = "settings"
     const val UPDATE = "update"
 
     /** Paths go in the back stack as an argument, so they are encoded, not interpolated. */
@@ -32,11 +33,11 @@ fun GitsApp() {
             HomeScreen(
                 onOpen = { directory -> controller.navigate(Routes.repo(directory.path)) },
                 onManageKeys = { controller.navigate(Routes.KEYS) },
-                onCheckUpdate = { controller.navigate(Routes.UPDATE) },
+                onOpenSettings = { controller.navigate(Routes.SETTINGS) },
             )
         }
-        composable(Routes.UPDATE) {
-            UpdateScreen(onBack = { controller.popBackStack() })
+        composable(Routes.SETTINGS) {
+            SettingsScreen(onBack = { controller.popBackStack() })
         }
         composable(Routes.KEYS) {
             KeysScreen(onBack = { controller.popBackStack() })

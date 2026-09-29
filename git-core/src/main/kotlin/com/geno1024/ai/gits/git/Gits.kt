@@ -68,6 +68,30 @@ class Gits private constructor(
         }
     }
 
+    /**
+     * Fills in the identity, but only where the repository has none of its own.
+     *
+     * A repository that already names someone is left alone: it was cloned from
+     * somewhere, or was set up deliberately, and an app-level default is not a good
+     * enough reason to overwrite either. This is what makes an identity saved in
+     * settings reachable by a repository that has none, without ever changing one that
+     * does.
+     */
+    fun adoptSavedIdentity(saved: Identity?) {
+        if (saved == null) return
+        // Asked of the config directly rather than of identity(), because that reports a
+        // blank half as present: a repository with a name and an empty email has an
+        // identity as far as it is concerned, and would then be left unfilled.
+        withConfig { config ->
+            val name = config.getString("user", null, "name")
+            val email = config.getString("user", null, "email")
+            // Half an identity is not an identity: fill in whichever half is missing and
+            // leave the other as it was, rather than declaring the pair unset.
+            if (name.isNullOrBlank()) config.setString("user", null, "name", saved.name)
+            if (email.isNullOrBlank()) config.setString("user", null, "email", saved.email)
+        }
+    }
+
     /** Sets the key `commit -S` should use, in `user.signingkey` form. */
     fun setSigningKey(spec: String?) {
         withConfig { config ->

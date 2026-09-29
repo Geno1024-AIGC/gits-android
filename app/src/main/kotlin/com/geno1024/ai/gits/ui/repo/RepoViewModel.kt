@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.geno1024.ai.gits.git.BranchInfo
 import com.geno1024.ai.gits.git.ChangeKind
 import com.geno1024.ai.gits.data.CredentialStore
+import com.geno1024.ai.gits.data.IdentityStore
 import com.geno1024.ai.gits.data.KeyStore
 import com.geno1024.ai.gits.git.Gits
 import com.geno1024.ai.gits.git.Identity
@@ -103,6 +104,7 @@ class RepoViewModel(
                 }
             }
             gits = opened.getOrNull()
+            gits?.adoptSavedIdentity(IdentityStore.getInstance(application).identity())
             state.update {
                 it.copy(loading = false, error = opened.exceptionOrNull()?.describe("Could not open"))
             }
