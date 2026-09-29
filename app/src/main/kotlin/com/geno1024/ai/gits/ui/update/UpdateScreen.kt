@@ -46,19 +46,11 @@ import com.geno1024.ai.gits.update.Updater
  * The source is offered as a choice rather than a fallback because whether GitHub's
  * file hosts are reachable is a property of the network a person is on, not of the app.
  */
-/**
- * The update panel, without a screen around it.
- *
- * Split out from [UpdateScreen] so settings can hold the same panel inline. Two copies
- * of this logic would drift, and the update flow is exactly the thing that must not
- * differ between the places a person can reach it from.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun UpdatePanel(
+private fun UpdatePanel(
     viewModel: UpdateViewModel,
     modifier: Modifier = Modifier,
-    showInstalled: Boolean = true,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -69,9 +61,7 @@ fun UpdatePanel(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            if (showInstalled) {
-                item { InstalledRow(state.installed) }
-            }
+            item { InstalledRow(state.installed) }
 
             item {
                 ReleaseCard(

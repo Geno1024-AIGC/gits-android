@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
@@ -57,7 +58,7 @@ import androidx.compose.ui.platform.LocalContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RepoScreen(path: String, onBack: () -> Unit) {
+fun RepoScreen(path: String, onBack: () -> Unit, onOpenSettings: () -> Unit) {
     // The path is the ViewModel's identity, so switching repositories builds a new
     // one instead of reloading state that belonged to the last.
     val application = LocalContext.current.applicationContext as Application
@@ -111,6 +112,12 @@ fun RepoScreen(path: String, onBack: () -> Unit) {
                         Icon(
                             Icons.Default.CloudUpload,
                             contentDescription = stringResource(R.string.action_push),
+                        )
+                    }
+                    IconButton(onClick = onOpenSettings) {
+                        Icon(
+                            Icons.Default.Settings,
+                            contentDescription = stringResource(R.string.settings_title),
                         )
                     }
                 },

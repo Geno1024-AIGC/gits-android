@@ -43,9 +43,6 @@ import com.geno1024.ai.gits.data.IdentityStore
 import com.geno1024.ai.gits.data.KeyStore
 import com.geno1024.ai.gits.data.StoredKey
 import com.geno1024.ai.gits.git.Identity
-import com.geno1024.ai.gits.ui.keys.KeysScreen
-import com.geno1024.ai.gits.ui.update.UpdatePanel
-import com.geno1024.ai.gits.ui.update.UpdateViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -60,31 +57,12 @@ import kotlinx.coroutines.withContext
 @Composable
 fun SettingsScreen(
     onBack: () -> Unit,
+    onOpenKeys: () -> Unit,
+    onOpenUpdates: () -> Unit,
     viewModel: SettingsViewModel = viewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val updateViewModel: UpdateViewModel = viewModel()
     var editingIdentity by remember { mutableStateOf(false) }
-    var inKeys by remember { mutableStateOf(false) }
-    var showingUpdates by remember { mutableStateOf(false) }
-
-    if (inKeys) {
-        // Reached by pushing rather than routing, so that going back lands on the
-        // settings list still scrolled to where it was, not on a fresh home screen.
-        KeysScreen(onBack = { inKeys = false })
-        return
-    }
-
-    if (showingUpdates) {
-        SettingsScaffold(title = stringResource(R.string.update_title), onBack = { showingUpdates = false }) { padding ->
-            UpdatePanel(
-                viewModel = updateViewModel,
-                modifier = Modifier.padding(padding),
-                showInstalled = true,
-            )
-        }
-        return
-    }
 
     SettingsScaffold(
         title = stringResource(R.string.settings_title),
@@ -112,7 +90,7 @@ fun SettingsScreen(
 
                         else -> stringResource(R.string.settings_keys_selected, state.keys.size)
                     },
-                    onClick = { inKeys = true },
+                    onClick = onOpenKeys,
                 )
             }
 
@@ -122,7 +100,7 @@ fun SettingsScreen(
                 SettingsRow(
                     title = stringResource(R.string.update_title),
                     subtitle = stringResource(R.string.settings_update_subtitle),
-                    onClick = { showingUpdates = true },
+                    onClick = onOpenUpdates,
                 )
             }
         }
