@@ -181,7 +181,13 @@ jobs:
           - commit \`$SHORT_SHA\`
           - run $GITHUB_RUN_NUMBER, branch \`${GITHUB_REF_NAME}\`
 
-          Install with \`adb install -r\` or copy the APK to a device and open it.
+          Since 0.1.18 every build is signed with one long-lived key, so
+          \`adb install -r\` replaces an installed copy in place.
+
+          Builds before 0.1.18 were each signed with a throwaway key that CI
+          generated on the runner, so they cannot install over one another or
+          over 0.1.18. Upgrading from one of those requires uninstalling first,
+          which clears the settings and imported keys held inside the app.
           EOF
           )"
 
