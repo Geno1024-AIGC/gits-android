@@ -185,11 +185,20 @@ jobs:
           EOF
           )"
 
+          mapfile -t built < <(find dist -maxdepth 1 -name '*.apk')
+          if [ "${#built[@]}" -ne 1 ]; then
+            echo "expected exactly one APK under dist, found ${#built[@]}" >&2
+            printf '  %s\n' "${built[@]:-none}" >&2
+            exit 1
+          fi
+          file_name="${built[0]#dist/}"
+          echo "Publishing $file_name"
+
           # --cleanup-tag as well, or the tag survives and the next create fails.
           gh release delete "$RELEASE_TAG" --yes --cleanup-tag 2>/dev/null || true
-          gh release create "$RELEASE_TAG" "dist/$FILE_NAME" \
+          gh release create "$RELEASE_TAG" "${built[0]}" \
             --title "Gits $VERSION_NAME" \
             --notes "$notes" \
             --prerelease
 
-          echo "Published $FILE_NAME to the $RELEASE_TAG pre-release"
+          echo "Published $file_name to the $RELEASE_TAG pre-release"
