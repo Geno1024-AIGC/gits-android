@@ -23,6 +23,7 @@ data class UpdateUiState(
     val downloadedBytes: Long = 0,
     val totalBytes: Long = 0,
     val downloaded: File? = null,
+    val lastInstallOutcome: String? = null,
     val error: String? = null,
     val message: String? = null,
 )
@@ -38,7 +39,13 @@ class UpdateViewModel(application: Application) : AndroidViewModel(application) 
     private val app = getApplication<Application>()
     private val settings = AppSettings.of(app)
 
-    private val state = MutableStateFlow(UpdateUiState(installed = installedVersion(), source = settings.updateSource))
+    private val state = MutableStateFlow(
+        UpdateUiState(
+            installed = installedVersion(),
+            source = settings.updateSource,
+            lastInstallOutcome = settings.lastInstallOutcome,
+        ),
+    )
     val uiState: StateFlow<UpdateUiState> = state.asStateFlow()
 
     init {
@@ -148,6 +155,18 @@ class UpdateViewModel(application: Application) : AndroidViewModel(application) 
 
     /** Reports back what the platform said about an install that was handed off. */
     fun showMessage(message: String) = state.update { it.copy(message = message) }
+
+    /**
+     * Picks up an outcome recorded while this screen was not open.
+     *
+     * A session install kills the process, so its result lands in storage rather than in
+     * the state this ViewModel holds. Reading it here is what turns an install that
+     * silently did nothing into one with an answer waiting on the next visit.
+     */
+    fun refreshInstallOutcome() {
+        val stored = settings.lastInstallOutcome ?: return
+        state.update { it.copy(lastInstallOutcome = stored) }
+    }
 
     private fun installedVersion(): String = runCatching {
         val info = app.packageManager.getPackageInfo(app.packageName, 0)

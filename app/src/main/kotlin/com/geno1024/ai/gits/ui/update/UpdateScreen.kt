@@ -116,7 +116,10 @@ fun UpdateScreen(
     // The ViewModel is kept by the navigation entry, so a return visit finds the same
     // one that was built the first time. Checking has to be asked for again from here,
     // or the screen would show a stale answer while looking like it had just looked.
-    LaunchedEffect(Unit) { viewModel.recheckIfStale() }
+    LaunchedEffect(Unit) {
+        viewModel.recheckIfStale()
+        viewModel.refreshInstallOutcome()
+    }
 
     Scaffold(
         topBar = {
@@ -235,6 +238,21 @@ private fun ReleaseCard(
                 text = it,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
+        // Kept separate from the transient message: this one is the answer to the last
+        // attempt and stays put, because a refusal that was dismissed once would
+        // otherwise leave a button that appears to do nothing all over again.
+        state.lastInstallOutcome?.let { outcome ->
+            Text(
+                text = stringResource(R.string.update_last_outcome_heading),
+                style = MaterialTheme.typography.titleSmall,
+            )
+            Text(
+                text = outcome,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
             )
         }
     }

@@ -29,11 +29,27 @@ class AppSettings(private val settings: Settings) {
             removed = if (value == null) setOf(KEY_DISMISSED) else emptySet(),
         )
 
+    /**
+     * How the last install ended, kept so the update screen can show it.
+     *
+     * A session install outlives this process, so the notification is the only thing
+     * that survives to report the outcome. A person who taps Install and sees nothing
+     * afterwards has no way to tell a refusal from a build that never arrived, so the
+     * result is written where the app will read it on the next visit.
+     */
+    var lastInstallOutcome: String?
+        get() = settings.string(KEY_LAST_INSTALL)
+        set(value) = settings.write(
+            strings = if (value == null) emptyMap() else mapOf(KEY_LAST_INSTALL to value),
+            removed = if (value == null) setOf(KEY_LAST_INSTALL) else emptySet(),
+        )
+
     companion object {
         fun of(application: Application) =
             AppSettings(SharedPreferencesSettings(application.getSharedPreferences("gits", Application.MODE_PRIVATE)))
 
         const val KEY_SOURCE = "update.source"
         const val KEY_DISMISSED = "update.dismissed"
+        const val KEY_LAST_INSTALL = "update.lastInstall"
     }
 }

@@ -1,5 +1,6 @@
 package com.geno1024.ai.gits.update
 
+import android.app.Application
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -9,6 +10,7 @@ import android.content.Intent
 import android.content.pm.PackageInstaller
 import android.os.Build
 import com.geno1024.ai.gits.R
+import com.geno1024.ai.gits.data.AppSettings
 
 /**
  * Reports how an install ended.
@@ -39,6 +41,7 @@ class InstallReceiver : BroadcastReceiver() {
                 context.getString(R.string.update_install_blocked)
             else -> context.getString(R.string.update_install_failed, result)
         }
+        AppSettings.of(context.applicationContext as Application).lastInstallOutcome = text
         notify(context, text)
     }
 

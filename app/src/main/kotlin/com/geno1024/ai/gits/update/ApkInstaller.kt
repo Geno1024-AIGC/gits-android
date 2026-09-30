@@ -69,6 +69,20 @@ object ApkInstaller {
      */
     @RequiresApi(Build.VERSION_CODES.Q)
     private fun installViaDownloads(activity: Activity, apk: File, onResult: (String) -> Unit) {
+        // Resolved first, because startActivity for an APK is the one route that can
+        // return normally and still show nothing: a device with no installer, or one
+        // that declines this MIME type, leaves the tap looking like a dead button.
+        val probe = Intent(Intent.ACTION_VIEW).apply {
+            // The Downloads collection is named rather than inserted, so this can ask
+            // the question without creating the file it is asking about.
+            setDataAndType(MediaStore.Downloads.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY), APK_MIME)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        if (probe.resolveActivity(activity.packageManager) == null) {
+            onResult("This device has nothing that can open an APK, so the build cannot be installed from here.")
+            return
+        }
+
         val resolver = activity.contentResolver
         val values = ContentValues().apply {
             put(MediaStore.Downloads.DISPLAY_NAME, "gits-${apk.nameWithoutExtension}.apk")
@@ -85,11 +99,11 @@ object ApkInstaller {
                 apk.inputStream().use { input -> input.copyTo(out) }
             } ?: error("Downloads would not open the file for writing")
 
-            val intent = Intent(Intent.ACTION_VIEW).apply {
+            val open = Intent(Intent.ACTION_VIEW).apply {
                 setDataAndType(target, APK_MIME)
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
             }
-            activity.startActivity(intent)
+            activity.startActivity(open)
             onResult("Saved to Downloads; confirm the install in the window that opens.")
         } catch (failure: Throwable) {
             // A file that could not be installed should not be left behind looking

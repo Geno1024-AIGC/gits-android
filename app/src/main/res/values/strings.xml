@@ -71,6 +71,7 @@
 
     <string name="update_title">Updates</string>
     <string name="update_installed_label">Installed</string>
+    <string name="update_last_outcome_heading">Last attempt</string>
     <string name="update_unknown_version">unknown</string>
     <string name="update_available_label">Newer build</string>
     <string name="update_checking">Checking for a newer build\u2026</string>
@@ -86,8 +87,10 @@
     <string name="update_channel">Installing</string>
     <string name="update_installed">Installed. The new version is ready to use.</string>
     <string name="update_install_canceled">The install was cancelled.</string>
-    <string name="update_install_conflict">The install was refused, most likely because that build was
-        signed with a different key.</string>
+    <string name="update_install_conflict">The install was refused because that build is signed with a
+        different key than the app you have installed. The two cannot replace one another,
+        so this build has to be installed from scratch: remove the current app first, then
+        install it.</string>
     <string name="update_install_invalid">The downloaded file was not a valid build.</string>
     <string name="update_install_incompatible">That build will not run on this device.</string>
     <string name="update_install_no_space">There is not enough room to install that build.</string>

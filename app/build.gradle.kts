@@ -30,9 +30,33 @@ android {
         compose = true
     }
 
+    // A build that is meant to replace an installed app has to carry the same signing
+    // key as that app, or the platform refuses it before the install even starts. The
+    // key is supplied by the environment rather than kept in the repository, and a
+    // build without one still works, it just cannot be installed over another one.
+    val signingKeyStore = providers.environmentVariable("GITS_SIGNING_STORE_FILE")
+        .orElse(providers.gradleProperty("gits.signing.storeFile"))
+
+    signingConfigs {
+        if (signingKeyStore.isPresent) {
+            create("release") {
+                storeFile = file(signingKeyStore.get())
+                storePassword = providers.environmentVariable("GITS_SIGNING_STORE_PASSWORD").orNull
+                keyAlias = providers.environmentVariable("GITS_SIGNING_KEY_ALIAS").getOrElse("gits")
+                keyPassword = providers.environmentVariable("GITS_SIGNING_KEY_PASSWORD").orNull
+            }
+        }
+    }
+
     buildTypes {
         debug {
             isMinifyEnabled = false
+            // The published build is the debug one, so the debug variant is the one that
+            // has to be signed with the shared key; without it this falls back to the
+            // machine-local debug key and no two builds can replace each other.
+            if (signingKeyStore.isPresent) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
         release {
             isMinifyEnabled = true
