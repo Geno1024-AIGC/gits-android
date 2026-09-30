@@ -31,6 +31,21 @@
                 <action android:name="com.geno1024.ai.gits.INSTALL_RESULT" />
             </intent-filter>
         </receiver>
+
+        <!--
+            Hands a downloaded build to the system installer. A file:// Uri cannot be
+            shared with another app on any supported release, so the installer is given
+            a content:// grant instead, scoped to the app's own cache.
+        -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
     </application>
 
 </manifest>

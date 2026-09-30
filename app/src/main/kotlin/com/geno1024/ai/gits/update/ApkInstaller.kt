@@ -3,6 +3,7 @@ package com.geno1024.ai.gits.update
 import android.app.Activity
 import android.app.PendingIntent
 import android.content.ContentValues
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageInstaller
 import android.net.Uri
@@ -11,6 +12,10 @@ import android.os.Environment
 import android.provider.MediaStore
 import android.util.Log
 import androidx.annotation.RequiresApi
+import androidx.core.content.FileProvider
+import com.geno1024.ai.gits.R
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.File
 
 /**
@@ -20,14 +25,21 @@ import java.io.File
  * installer session, or a copy in Downloads handed to the ordinary installer. Which one
  * is used depends on the platform version, because from Android 10 a session shows a
  * flow that a person is unlikely to read as "install the update you just downloaded".
+ *
+ * The copy of the build happens on [Dispatchers.IO] and can therefore take seconds, which
+ * is why this suspends rather than returning: a caller on the main thread would otherwise
+ * freeze the frame the button was pressed in.
  */
 object ApkInstaller {
 
-    fun install(activity: Activity, apk: File, onResult: (String) -> Unit) {
+    /**
+     * @param onResult a message for the person, already resolved to display text.
+     */
+    suspend fun install(activity: Activity, apk: File, onResult: (String) -> Unit) {
         runCatching {
             if (canInstallPackages(activity)) {
                 sessionInstall(activity, apk)
-                onResult("The install was handed to the system; its result arrives as a notification.")
+                onResult(activity.getString(R.string.update_install_handed_off))
             } else if (Build.VERSION.SDK_INT >= 29) {
                 installViaDownloads(activity, apk, onResult)
             } else {
@@ -35,7 +47,9 @@ object ApkInstaller {
             }
         }.onFailure {
             Log.w(TAG, "could not start the install", it)
-            onResult("The install could not be started: ${it.message ?: "unknown reason"}.")
+            onResult(
+                activity.getString(R.string.update_install_not_started, it.message ?: UNKNOWN_REASON),
+            )
         }
     }
 
@@ -48,16 +62,18 @@ object ApkInstaller {
     fun canInstallPackages(activity: Activity): Boolean =
         activity.packageManager.canRequestPackageInstalls()
 
-    private fun sessionInstall(activity: Activity, apk: File) {
-        val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)
-        val installer = activity.packageManager.packageInstaller
-        val session = installer.createSession(params)
-        installer.openSession(session).use {
-            it.openWrite(apk.name, 0, apk.length()).use { out ->
-                apk.inputStream().use { input -> input.copyTo(out) }
-                it.fsync(out)
+    private suspend fun sessionInstall(activity: Activity, apk: File) {
+        withContext(Dispatchers.IO) {
+            val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)
+            val installer = activity.packageManager.packageInstaller
+            val session = installer.createSession(params)
+            installer.openSession(session).use {
+                it.openWrite(apk.name, 0, apk.length()).use { out ->
+                    apk.inputStream().use { input -> input.copyTo(out) }
+                    it.fsync(out)
+                }
+                it.commit(resultIntent(activity).intentSender)
             }
-            it.commit(resultIntent(activity).intentSender)
         }
     }
 
@@ -68,7 +84,7 @@ object ApkInstaller {
      * one of these routes where the file remains reachable if the install is refused.
      */
     @RequiresApi(Build.VERSION_CODES.Q)
-    private fun installViaDownloads(activity: Activity, apk: File, onResult: (String) -> Unit) {
+    private suspend fun installViaDownloads(activity: Activity, apk: File, onResult: (String) -> Unit) {
         // Resolved first, because startActivity for an APK is the one route that can
         // return normally and still show nothing: a device with no installer, or one
         // that declines this MIME type, leaves the tap looking like a dead button.
@@ -79,7 +95,7 @@ object ApkInstaller {
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
         if (probe.resolveActivity(activity.packageManager) == null) {
-            onResult("This device has nothing that can open an APK, so the build cannot be installed from here.")
+            onResult(activity.getString(R.string.update_install_no_installer))
             return
         }
 
@@ -95,16 +111,18 @@ object ApkInstaller {
         ) ?: error("Downloads refused the file")
 
         try {
-            resolver.openOutputStream(target)?.use { out ->
-                apk.inputStream().use { input -> input.copyTo(out) }
-            } ?: error("Downloads would not open the file for writing")
+            withContext(Dispatchers.IO) {
+                resolver.openOutputStream(target)?.use { out ->
+                    apk.inputStream().use { input -> input.copyTo(out) }
+                } ?: error("Downloads would not open the file for writing")
+            }
 
             val open = Intent(Intent.ACTION_VIEW).apply {
                 setDataAndType(target, APK_MIME)
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
             }
             activity.startActivity(open)
-            onResult("Saved to Downloads; confirm the install in the window that opens.")
+            onResult(activity.getString(R.string.update_install_saved_to_downloads))
         } catch (failure: Throwable) {
             // A file that could not be installed should not be left behind looking
             // like a build that could be.
@@ -114,14 +132,22 @@ object ApkInstaller {
     }
 
     private fun openInstaller(activity: Activity, apk: File, onResult: (String) -> Unit) {
-        val uri: Uri = Uri.fromFile(apk)
         val intent = Intent(Intent.ACTION_VIEW).apply {
-            setDataAndType(uri, APK_MIME)
+            setDataAndType(installerUri(activity, apk), APK_MIME)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
         activity.startActivity(intent)
-        onResult("Confirm the install in the window that opens.")
+        onResult(activity.getString(R.string.update_install_confirm))
     }
+
+    /**
+     * The build as something another app is allowed to read.
+     *
+     * A file:// Uri throws [FileUriExposedException] on every release this app supports,
+     * so the installer has to be handed a grant it was given the authority for.
+     */
+    private fun installerUri(context: Context, apk: File): Uri =
+        FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", apk)
 
     private fun resultIntent(activity: Activity): PendingIntent = PendingIntent.getBroadcast(
         activity,
@@ -131,5 +157,6 @@ object ApkInstaller {
     )
 
     private const val APK_MIME = "application/vnd.android.package-archive"
+    private const val UNKNOWN_REASON = "unknown reason"
     private const val TAG = "ApkInstaller"
 }

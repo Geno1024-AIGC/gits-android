@@ -90,6 +90,11 @@
     <string name="update_install_timeout">安装耗时过长，已放弃。</string>
     <string name="update_install_blocked">此设备上的某项设置拒绝允许本次安装。</string>
     <string name="update_install_failed">安装未完成（代码 %1$d）。</string>
+    <string name="update_install_handed_off">安装已交给系统处理，结果会通过通知告知。</string>
+    <string name="update_install_not_started">无法开始安装：%1$s。</string>
+    <string name="update_install_no_installer">本机没有能打开 APK 的应用，因此无法在此安装这个版本。</string>
+    <string name="update_install_saved_to_downloads">已保存到「下载」；请在弹出的窗口中确认安装。</string>
+    <string name="update_install_confirm">请在弹出的窗口中确认安装。</string>
     <string name="action_save">保存</string>
     <string name="settings_title">设置</string>
     <string name="settings_section_you">你</string>

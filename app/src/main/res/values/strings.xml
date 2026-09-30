@@ -98,6 +98,11 @@
     <string name="update_install_timeout">The install took too long and was given up on.</string>
     <string name="update_install_blocked">Something on this device refused to allow the install.</string>
     <string name="update_install_failed">The install did not finish (code %1$d).</string>
+    <string name="update_install_handed_off">The install was handed to the system; its result arrives as a notification.</string>
+    <string name="update_install_not_started">The install could not be started: %1$s.</string>
+    <string name="update_install_no_installer">This device has nothing that can open an APK, so the build cannot be installed from here.</string>
+    <string name="update_install_saved_to_downloads">Saved to Downloads; confirm the install in the window that opens.</string>
+    <string name="update_install_confirm">Confirm the install in the window that opens.</string>
     <string name="action_save">Save</string>
     <string name="settings_title">Settings</string>
     <string name="settings_section_you">You</string>

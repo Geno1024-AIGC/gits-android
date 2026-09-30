@@ -30,6 +30,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -40,6 +41,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.geno1024.ai.gits.R
 import com.geno1024.ai.gits.update.ApkInstaller
+import kotlinx.coroutines.launch
 import com.geno1024.ai.gits.update.Updater
 
 /**
@@ -57,6 +59,7 @@ private fun UpdatePanel(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val noActivityMessage = stringResource(R.string.update_install_no_activity)
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
     Box(modifier = modifier.fillMaxSize()) {
         LazyColumn(
@@ -79,7 +82,9 @@ private fun UpdatePanel(
                         if (activity == null) {
                             viewModel.showMessage(noActivityMessage)
                         } else {
-                            ApkInstaller.install(activity, apk, viewModel::showMessage)
+                            // The install copies tens of megabytes, so it runs off the
+                            // main thread and this scope is what the frame waits on.
+                            scope.launch { ApkInstaller.install(activity, apk, viewModel::showMessage) }
                         }
                     },
                     onDismissNotice = viewModel::dismiss,
