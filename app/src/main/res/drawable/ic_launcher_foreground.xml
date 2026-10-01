@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  A Git commit graph, in the diagonal form GitHub uses: two commits that merge and
-  then carry on together, drawn as a "Y" rather than a box-and-line tree.
+  A Git log, read left to right: a trunk carrying two commits, a branch that forks
+  upward and ends in a third, and at the head of the trunk a wax seal.
 
-  The tip of the trunk is a green disc with a check, which is the one thing this app
-  does that a plain Git client does not: decide for itself whether a signature is
-  good. A disc is used rather than a ring because the fill survives being seen at
-  fifteen pixels.
+  The seal is the point of the icon. Gits exists because `git -S` needs a key, so the
+  commit at the end of history is not a plain disc but a stamped signature: vermilion
+  wax with a hand-written stroke reversed out of it. A check would say "verified";
+  a signature says "signed", which is what the app actually does for you.
 
   Everything circular here is placed by its *outer* edge, not its centre. A launcher
   shows the middle 72dp, and a round one shows a circle of radius 36, so a node whose
@@ -14,6 +14,10 @@
   chip out of the disc. Measuring the rim keeps the whole of every node and of the
   seal inside that circle; the strokes are then free to reach for the corners, which
   is what a bleeding line is supposed to look like.
+
+  There is no rim around the seal. A ring outside a fourteen-unit disc either runs
+  into the mask or lands one unit from a commit, and at launcher size a ring that
+  tight is a sub-pixel smudge that says nothing.
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
@@ -21,46 +25,38 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- The two commits that merge, and the trunk that leaves the merge. -->
+    <!-- The trunk, and the branch that forks off it. -->
     <path
-        android:pathData="M35,35 L52,52 L67,67"
-        android:strokeColor="#F05032"
+        android:pathData="M29,64 L72,64"
+        android:strokeColor="#232019"
         android:strokeWidth="8"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round" />
+        android:strokeLineCap="round" />
     <path
-        android:pathData="M70,36 L52,52"
-        android:strokeColor="#F05032"
+        android:pathData="M47,64 L47,40 L60,40"
+        android:strokeColor="#232019"
         android:strokeWidth="8"
         android:strokeLineCap="round"
         android:strokeLineJoin="round" />
 
-    <!-- The upper commits. -->
+    <!-- The three commits: two on the trunk, one on the branch. -->
     <path
-        android:pathData="M35,35 m-7,0 a7,7 0,1 1,14 0 a7,7 0,1 1,-14 0"
-        android:fillColor="#E5E7EB" />
+        android:pathData="M29,64 m-7,0 a7,7 0,1 1,14 0 a7,7 0,1 1,-14 0"
+        android:fillColor="#232019" />
     <path
-        android:pathData="M70,36 m-7,0 a7,7 0,1 1,14 0 a7,7 0,1 1,-14 0"
-        android:fillColor="#E5E7EB" />
-    <!-- The merge. -->
+        android:pathData="M47,64 m-7,0 a7,7 0,1 1,14 0 a7,7 0,1 1,-14 0"
+        android:fillColor="#232019" />
     <path
-        android:pathData="M52,52 m-7,0 a7,7 0,1 1,14 0 a7,7 0,1 1,-14 0"
-        android:fillColor="#E5E7EB" />
+        android:pathData="M60,40 m-7,0 a7,7 0,1 1,14 0 a7,7 0,1 1,-14 0"
+        android:fillColor="#232019" />
 
-    <!-- The seal, drawn around the tip of the trunk it covers. -->
+    <!-- The signed head of history: wax, then the signature written across it. -->
     <path
-        android:pathData="M67,67 m-14,0 a14,14 0,1 1,28 0 a14,14 0,1 1,-28 0"
-        android:fillColor="#22C55E" />
-    <!-- Rim outside the disc rather than a ring inside it: an inset ring on a
-         fourteen-unit disc is a sub-pixel smudge at launcher size, and says nothing. -->
+        android:pathData="M72,64 m-14,0 a14,14 0,1 1,28 0 a14,14 0,1 1,-28 0"
+        android:fillColor="#A62B22" />
     <path
-        android:pathData="M67,67 m-15,0 a15,15 0,1 1,30 0 a15,15 0,1 1,-30 0"
-        android:strokeColor="#E5E7EB"
-        android:strokeWidth="2" />
-    <path
-        android:pathData="M60,68 L64.5,73 L74,61"
-        android:strokeColor="#0B1220"
-        android:strokeWidth="4.5"
+        android:pathData="M65.2,66.7 C67,60.3 70.7,60 71.5,64.9 C72.2,69.6 76,69.2 77,64.2 C77.9,60.2 80.5,60 81.4,62.4"
+        android:strokeColor="#F0E8D8"
+        android:strokeWidth="4"
         android:strokeLineCap="round"
         android:strokeLineJoin="round" />
 </vector>
