@@ -1,13 +1,17 @@
 package com.geno1024.ai.gits.ui.repo
 
 import android.app.Application
+import androidx.annotation.StringRes
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.geno1024.ai.gits.R
 import com.geno1024.ai.gits.git.BranchInfo
 import com.geno1024.ai.gits.git.ChangeKind
 import com.geno1024.ai.gits.data.CredentialStore
 import com.geno1024.ai.gits.data.IdentityStore
 import com.geno1024.ai.gits.data.KeyStore
+import com.geno1024.ai.gits.data.WorkingEntry
+import com.geno1024.ai.gits.data.WorkingTree
 import com.geno1024.ai.gits.git.Gits
 import com.geno1024.ai.gits.git.Identity
 import com.geno1024.ai.gits.git.LogEntry
@@ -34,11 +38,12 @@ data class CredentialRequest(
 enum class Transfer { PUSH, PULL }
 
 /** Which pane the repository screen is showing. */
-enum class RepoTab(val label: String) {
-    CHANGES("Changes"),
-    HISTORY("History"),
-    BRANCHES("Branches"),
-    REMOTES("Remotes"),
+enum class RepoTab(@StringRes val label: Int) {
+    CHANGES(R.string.repo_tab_changes),
+    HISTORY(R.string.repo_tab_history),
+    BRANCHES(R.string.repo_tab_branches),
+    REMOTES(R.string.repo_tab_remotes),
+    FILES(R.string.repo_tab_files),
 }
 
 data class RepoUiState(
@@ -55,6 +60,9 @@ data class RepoUiState(
     val history: List<LogEntry> = emptyList(),
     val branches: List<BranchInfo> = emptyList(),
     val remotes: List<RemoteInfo> = emptyList(),
+    val files: List<WorkingEntry> = emptyList(),
+    /** The folder the Files pane is showing, relative to the root; empty means the root. */
+    val directory: String = "",
     val identity: Identity? = null,
     val signCommits: Boolean = false,
     /** False when the app holds no key that can sign, so the switch can be disabled. */
@@ -114,7 +122,10 @@ class RepoViewModel(
 
     private fun require(): Gits = gits ?: error("The repository is not open.")
 
-    fun selectTab(tab: RepoTab) = state.update { it.copy(tab = tab) }
+    fun selectTab(tab: RepoTab) {
+        state.update { it.copy(tab = tab) }
+        if (tab == RepoTab.FILES) readFiles()
+    }
 
     fun dismissError() = state.update { it.copy(error = null) }
 
@@ -148,6 +159,7 @@ class RepoViewModel(
             .onFailure { failure ->
                 state.update { it.copy(error = failure.describe("Could not read")) }
             }
+        if (state.value.tab == RepoTab.FILES) readFiles()
     }
 
     /** Everything the screen shows, read in one go so the panes cannot disagree. */
@@ -174,6 +186,54 @@ class RepoViewModel(
             identity = repo.identity(),
             signCommits = repo.signCommitsByDefault(),
         )
+    }
+
+    // -------------------------------------------------------------------- files
+
+    /** Shows [directory], which is named from the repository root. */
+    fun enter(directory: String) {
+        state.update { it.copy(directory = directory) }
+        readFiles()
+    }
+
+    /** Moves up one folder, and stays put at the root where there is nothing above. */
+    fun upDirectory() {
+        val parent = state.value.directory.substringBeforeLast('/', "").trimEnd('/')
+        state.update { it.copy(directory = parent) }
+        readFiles()
+    }
+
+    /**
+     * Makes an empty file, or a folder, in the folder being shown.
+     *
+     * Nothing is staged afterwards. The person asked for a file, not for a commit to be
+     * prepared out of it, and a file that appeared in the index unasked would be one they
+     * had to notice and undo to keep it out.
+     */
+    fun createEntry(name: String, directory: Boolean) = viewModelScope.launch {
+        val inFolder = state.value.directory
+        val relative = if (inFolder.isEmpty()) name else "$inFolder/$name"
+        state.update { it.copy(busy = true, error = null) }
+        val outcome = withContext(Dispatchers.IO) {
+            runCatching { WorkingTree.create(File(path), relative, directory) }
+        }
+        state.update { it.copy(busy = false) }
+        outcome.onFailure { failure ->
+            state.update { it.copy(error = failure.describe("Could not create")) }
+        }
+        // Which re-reads this pane too, so the file shows here and in Changes, where
+        // somebody will next look for it.
+        refresh()
+    }
+
+    private fun readFiles() = viewModelScope.launch {
+        val directory = state.value.directory
+        val outcome = withContext(Dispatchers.IO) {
+            runCatching { WorkingTree.entries(File(path), directory) }
+        }
+        outcome
+            .onSuccess { entries -> state.update { it.copy(files = entries) } }
+            .onFailure { failure -> state.update { it.copy(error = failure.describe("Could not list")) } }
     }
 
     // ------------------------------------------------------------------ staging

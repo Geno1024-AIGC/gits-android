@@ -1,5 +1,6 @@
 package com.geno1024.ai.gits.ui.repo
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -130,7 +131,7 @@ fun RepoScreen(path: String, onBack: () -> Unit, onOpenSettings: () -> Unit) {
                         selected = state.tab == tab,
                         onClick = { viewModel.selectTab(tab) },
                         icon = {},
-                        label = { Text(tab.label) },
+                        label = { Text(stringResource(tab.label)) },
                     )
                 }
             }
@@ -145,6 +146,7 @@ fun RepoScreen(path: String, onBack: () -> Unit, onOpenSettings: () -> Unit) {
                     RepoTab.HISTORY -> HistoryPane(state)
                     RepoTab.BRANCHES -> BranchesPane(state, viewModel)
                     RepoTab.REMOTES -> RemotesPane(state, viewModel)
+                    RepoTab.FILES -> FilesPane(state, viewModel)
                 }
             }
 
@@ -535,6 +537,112 @@ private fun RemotesPane(state: RepoUiState, viewModel: RepoViewModel) {
             },
         )
     }
+}
+
+/** What the new-name dialog is being asked to make. */
+private enum class NewEntry { FILE, FOLDER }
+
+@Composable
+private fun FilesPane(state: RepoUiState, viewModel: RepoViewModel) {
+    var making by remember { mutableStateOf<NewEntry?>(null) }
+
+    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(
+                text = state.directory.ifEmpty { stringResource(R.string.repo_files_root) },
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.weight(1f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            TextButton(onClick = viewModel::upDirectory, enabled = state.directory.isNotEmpty()) {
+                Text(stringResource(R.string.repo_files_up))
+            }
+        }
+
+        HorizontalDivider()
+
+        if (state.files.isEmpty()) {
+            EmptyNote(stringResource(R.string.repo_files_empty))
+        } else {
+            LazyColumn(modifier = Modifier.weight(1f)) {
+                items(state.files, key = { it.path }) { entry ->
+                    // A folder is something to go into and a file is something to look
+                    // at, so only one of them answers a tap rather than both pretending.
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .then(if (entry.directory) Modifier.clickable { viewModel.enter(entry.path) } else Modifier)
+                            .padding(vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = if (entry.directory) "${entry.name}/" else entry.name,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.weight(1f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+            }
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            OutlinedButton(onClick = { making = NewEntry.FILE }, modifier = Modifier.weight(1f)) {
+                Text(stringResource(R.string.repo_files_new_file))
+            }
+            OutlinedButton(onClick = { making = NewEntry.FOLDER }, modifier = Modifier.weight(1f)) {
+                Text(stringResource(R.string.repo_files_new_folder))
+            }
+        }
+    }
+
+    making?.let { what ->
+        NewEntryDialog(
+            title = stringResource(
+                if (what == NewEntry.FILE) R.string.repo_files_new_file else R.string.repo_files_new_folder,
+            ),
+            onDismiss = { making = null },
+            onConfirm = { name ->
+                making = null
+                viewModel.createEntry(name, what == NewEntry.FOLDER)
+            },
+        )
+    }
+}
+
+@Composable
+private fun NewEntryDialog(title: String, onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
+    var name by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            OutlinedTextField(
+                value = name,
+                onValueChange = { name = it },
+                label = { Text(stringResource(R.string.repo_files_name)) },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        },
+        confirmButton = {
+            TextButton(enabled = name.isNotBlank(), onClick = { onConfirm(name.trim()) }) {
+                Text(stringResource(R.string.action_ok))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+        },
+    )
 }
 
 @Composable

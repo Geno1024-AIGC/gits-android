@@ -49,6 +49,18 @@
     <string name="field_passphrase_again">再输一次密码</string>
     <string name="repo_no_signing_key">此应用尚无可用于签名的密钥，因此提交将不签名。</string>
     <string name="repo_no_identity">提交前需要姓名和邮箱</string>
+
+    <string name="repo_tab_changes">更改</string>
+    <string name="repo_tab_history">历史</string>
+    <string name="repo_tab_branches">分支</string>
+    <string name="repo_tab_remotes">远程</string>
+    <string name="repo_tab_files">文件</string>
+    <string name="repo_files_root">仓库根目录</string>
+    <string name="repo_files_up">上一级</string>
+    <string name="repo_files_empty">这个文件夹是空的。</string>
+    <string name="repo_files_name">名称</string>
+    <string name="repo_files_new_file">新建文件</string>
+    <string name="repo_files_new_folder">新建文件夹</string>
     <string name="action_check_update">检查更新</string>
     <string name="keys_signs_with">使用此密钥签名提交</string>
     <string name="keys_can_sign">可签名</string>
