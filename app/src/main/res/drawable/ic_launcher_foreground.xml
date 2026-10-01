@@ -54,9 +54,22 @@
         android:pathData="M72,64 m-14,0 a14,14 0,1 1,28 0 a14,14 0,1 1,-28 0"
         android:fillColor="#A62B22" />
     <path
-        android:pathData="M65.2,66.7 C67,60.3 70.7,60 71.5,64.9 C72.2,69.6 76,69.2 77,64.2 C77.9,60.2 80.5,60 81.4,62.4"
+        android:pathData="M64,64 C65,57.5 68,56 70,60.5 C71.5,64 74,64 75.5,60 C77,56.5 79,56 79.5,58.5"
         android:strokeColor="#F0E8D8"
         android:strokeWidth="4"
         android:strokeLineCap="round"
         android:strokeLineJoin="round" />
+    <!--
+      The rule the signature sits on. The stroke on its own is only a flourish, and
+      a flourish stamped in wax could be anything; writing above a straight line is
+      read as a signature without having to be legible. It is lighter than the
+      writing, as a ruled line always is, and kept 3.5 units clear of the lowest
+      stroke so the gap survives downscaling instead of the two fusing into a blob:
+      1.6px at the 48dp a launcher actually draws.
+    -->
+    <path
+        android:pathData="M65,71 L80,71"
+        android:strokeColor="#F0E8D8"
+        android:strokeWidth="3"
+        android:strokeLineCap="round" />
 </vector>
