@@ -119,4 +119,27 @@ class CredentialsTest {
         assertEquals(null, URIish("https:///x").credentialHost())
         assertEquals("github.com", URIish("https://github.com/o/r.git").credentialHost())
     }
+
+    @Test
+    fun `a secret is filed under the host the transport asks for`() {
+        assertEquals("github.com", "https://github.com/o/r.git".toCredentialHost())
+        assertEquals("github.com", "git@github.com:owner/repository.git".toCredentialHost())
+        assertEquals("localhost", "http://localhost:8080/o/r".toCredentialHost())
+    }
+
+    @Test
+    fun `an address written as just a host is still a host`() {
+        assertEquals("github.com", "github.com".toCredentialHost())
+        assertEquals("github.com", "github.com/owner/repository".toCredentialHost())
+        assertEquals("github.com", "github.com:8080".toCredentialHost())
+        assertEquals("github.com", "GitHub.com/owner/repository".toCredentialHost())
+        assertEquals("github.com", "  github.com/owner/repository  ".toCredentialHost())
+    }
+
+    @Test
+    fun `a local path has no host to file anything under`() {
+        assertEquals("", "/srv/git/repository.git".toCredentialHost())
+        assertEquals("", "file:///srv/git/repository.git".toCredentialHost())
+        assertEquals("", "".toCredentialHost())
+    }
 }

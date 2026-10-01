@@ -10,7 +10,6 @@
     <string name="action_add">Add</string>
     <string name="action_forget">Remove from this list</string>
     <string name="action_open_repository">Open a repository</string>
-    <string name="action_open">Open</string>
     <string name="action_pull">Pull</string>
     <string name="action_push">Push</string>
     <string name="action_create_repository">New repository</string>
@@ -22,9 +21,8 @@
     <string name="field_initial_branch">First branch</string>
 
     <string name="home_empty_title">No repositories yet</string>
-    <string name="home_empty_detail">Create one, or tap the button to make a new folder into a repository.</string>
+    <string name="home_empty_detail">Open one you already have, or use the button to make a new one here or clone one from elsewhere.</string>
 
-    <string name="home_folder_hint">Leave a name to use the app\'s own folder; type a full path to use your own.</string>
     <string name="repo_no_branch">no branch</string>
     <string name="credentials_title">Sign in to %1$s</string>
     <string name="credentials_detail">%1$s needs a name and a secret. It is stored encrypted, and only ever offered to %1$s.</string>
@@ -104,6 +102,19 @@
     <string name="update_install_saved_to_downloads">Saved to Downloads; confirm the install in the window that opens.</string>
     <string name="update_install_confirm">Confirm the install in the window that opens.</string>
     <string name="action_save">Save</string>
+    <string name="action_new">New</string>
+    <string name="action_clone">Clone</string>
+    <string name="action_clone_repository">Clone a repository</string>
+    <string name="action_forget_account">Sign out of this host</string>
+
+    <string name="field_address">Address</string>
+    <string name="field_host">Host or address</string>
+    <string name="field_clone_branch">Branch (leave empty for the remote\'s own)</string>
+    <string name="clone_address_hint">https://github.com/owner/repository.git</string>
+    <string name="clone_folder_hint">The name comes from the address. Pick a folder to hold it, or type a full path instead.</string>
+    <string name="create_folder_hint">Leave the name empty to use the folder you picked; type a full path when you have not.</string>
+    <string name="create_target">Goes to %1$s</string>
+
     <string name="settings_title">Settings</string>
     <string name="settings_section_you">You</string>
     <string name="settings_section_app">App</string>
@@ -114,5 +125,10 @@
     <string name="settings_no_keys">No keys yet</string>
     <string name="settings_keys_no_selection">%1$d held, none chosen for signing</string>
     <string name="settings_keys_selected">%1$d held</string>
+    <string name="settings_section_repositories">Repositories</string>
+    <string name="settings_default_branch">Default branch</string>
+    <string name="settings_default_branch_note">New repositories start on this. The create dialog opens with it and still takes an edit.</string>
+    <string name="settings_accounts_none">None yet</string>
+    <string name="settings_accounts_empty">No host yet. One is asked for when it is needed, or a name and a secret can be given here first.</string>
     <string name="settings_update_subtitle">Check for and install newer builds</string>
 </resources>

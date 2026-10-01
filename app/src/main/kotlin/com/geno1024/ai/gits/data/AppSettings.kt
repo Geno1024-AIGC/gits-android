@@ -10,6 +10,20 @@ import com.geno1024.ai.gits.update.Updater
  */
 class AppSettings(private val settings: Settings) {
 
+    /**
+     * The branch a new repository starts on.
+     *
+     * A default rather than a rule: the create dialog still shows the branch and still
+     * takes an edit, because someone who makes one repository on `trunk` and the next on
+     * `main` should not have to come here in between. What lives here is what the dialog
+     * opens with, so the answer is the same on the next visit as it was on the last.
+     */
+    var initialBranch: String
+        get() = settings.string(KEY_INITIAL_BRANCH)?.takeIf { it.isNotBlank() } ?: DEFAULT_BRANCH
+        set(value) = settings.write(
+            strings = mapOf(KEY_INITIAL_BRANCH to value.trim().ifEmpty { DEFAULT_BRANCH }),
+        )
+
     /** Where builds are downloaded from; the feed itself is always GitHub's. */
     var updateSource: Updater.Source
         get() = Updater.sourceFrom(settings.string(KEY_SOURCE))
@@ -48,6 +62,10 @@ class AppSettings(private val settings: Settings) {
         fun of(application: Application) =
             AppSettings(SharedPreferencesSettings(application.getSharedPreferences("gits", Application.MODE_PRIVATE)))
 
+        /** What a repository is given before anyone has said otherwise. */
+        const val DEFAULT_BRANCH = "main"
+
+        const val KEY_INITIAL_BRANCH = "repo.initialBranch"
         const val KEY_SOURCE = "update.source"
         const val KEY_DISMISSED = "update.dismissed"
         const val KEY_LAST_INSTALL = "update.lastInstall"

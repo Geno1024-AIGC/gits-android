@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.CreateNewFolder
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Folder
@@ -23,6 +24,8 @@ import androidx.compose.material.icons.filled.VpnKey
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -49,7 +52,11 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.geno1024.ai.gits.R
 import com.geno1024.ai.gits.data.DocumentTree
 import com.geno1024.ai.gits.data.RecentRepository
+import com.geno1024.ai.gits.ui.CredentialsDialog
 import java.io.File
+
+/** What the folder picker was opened for, so the answer can be put to that use. */
+private enum class FolderWant { OPEN, CREATE, CLONE }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -63,19 +70,25 @@ fun HomeScreen(
     val context = LocalContext.current
 
     var creating by remember { mutableStateOf(false) }
-    var opening by remember { mutableStateOf(false) }
+    var cloning by remember { mutableStateOf(false) }
+    var menu by remember { mutableStateOf(false) }
 
     /**
      * The folder a new repository would be made inside, when one was picked.
      *
      * Held here rather than passed down so that picking a folder is the same gesture
-     * whether it ends in opening something or making something.
+     * whether it ends in opening something or making something, and so that both
+     * dialogs see the same answer without being opened together.
      */
     var parent by remember { mutableStateOf<File?>(null) }
+
+    var wanted by remember { mutableStateOf<FolderWant?>(null) }
 
     val pickFolder = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocumentTree(),
     ) { uri ->
+        val ask = wanted
+        wanted = null
         if (uri == null) return@rememberLauncherForActivityResult
         // Without this the grant is gone the next time the app starts, and the entry
         // in the recents list would point at a folder this app can no longer read.
@@ -83,14 +96,21 @@ fun HomeScreen(
         DocumentTree.requireDirectoryOf(uri)
             .onSuccess { picked ->
                 parent = picked
-                if (opening) {
-                    opening = false
-                    viewModel.open(picked.path, onOpen)
-                } else {
-                    creating = true
+                when (ask) {
+                    FolderWant.OPEN -> viewModel.open(picked.path, onOpen)
+                    // The dialogs are already up when the pick came from inside one, so
+                    // this only has to make sure they stay up now that there is an answer.
+                    FolderWant.CREATE -> creating = true
+                    FolderWant.CLONE -> cloning = true
+                    null -> Unit
                 }
             }
             .onFailure { viewModel.report(it.message ?: "That folder cannot be used.") }
+    }
+
+    fun pick(want: FolderWant) {
+        wanted = want
+        pickFolder.launch(DocumentTree.initialUri())
     }
 
     Scaffold(
@@ -110,7 +130,7 @@ fun HomeScreen(
                             contentDescription = stringResource(R.string.keys_title),
                         )
                     }
-                    IconButton(onClick = { pickFolder.launch(DocumentTree.initialUri()) }) {
+                    IconButton(onClick = { pick(FolderWant.OPEN) }) {
                         Icon(
                             Icons.Default.FolderOpen,
                             contentDescription = stringResource(R.string.action_open_repository),
@@ -120,11 +140,31 @@ fun HomeScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { creating = true }) {
-                Icon(
-                    Icons.Default.Add,
-                    contentDescription = stringResource(R.string.action_create_repository),
-                )
+            Box {
+                FloatingActionButton(onClick = { menu = true }) {
+                    Icon(
+                        Icons.Default.Add,
+                        contentDescription = stringResource(R.string.action_new),
+                    )
+                }
+                DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.action_create_repository)) },
+                        leadingIcon = { Icon(Icons.Default.CreateNewFolder, contentDescription = null) },
+                        onClick = {
+                            menu = false
+                            creating = true
+                        },
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.action_clone_repository)) },
+                        leadingIcon = { Icon(Icons.Default.CloudDownload, contentDescription = null) },
+                        onClick = {
+                            menu = false
+                            cloning = true
+                        },
+                    )
+                }
             }
         },
     ) { padding ->
@@ -135,7 +175,7 @@ fun HomeScreen(
                 state.repositories.isEmpty() -> EmptyState(
                     title = stringResource(R.string.home_empty_title),
                     detail = stringResource(R.string.home_empty_detail),
-                    onOpen = { pickFolder.launch(DocumentTree.initialUri()) },
+                    onOpen = { pick(FolderWant.OPEN) },
                     modifier = Modifier.align(Alignment.Center),
                 )
 
@@ -160,29 +200,42 @@ fun HomeScreen(
         }
     }
 
-    if (opening) {
-        FolderDialog(
-            title = stringResource(R.string.action_open_repository),
-            confirmLabel = stringResource(R.string.action_open),
-            suggestedFolder = viewModel.suggestedFolder,
-            onDismiss = { opening = false },
-            onConfirm = { folder ->
-                opening = false
-                viewModel.open(folder, onOpen)
+    if (creating) {
+        // Read once as the dialog opens, so that a default changed in settings is
+        // taken up here rather than on the next keystroke, and so that an edit made
+        // in the dialog is not overwritten by the setting it started from.
+        val defaultBranch = remember { viewModel.defaultBranch() }
+        CreateRepositoryDialog(
+            suggestedFolder = parent?.let { "${it.name}/" } ?: viewModel.suggestedFolder,
+            parent = parent,
+            defaultBranch = defaultBranch,
+            onPickParent = { pick(FolderWant.CREATE) },
+            onDismiss = { creating = false },
+            // Left open until the repository exists: a failure that closes the dialog
+            // takes the address, the folder and the branch with it, and asking for all
+            // three again is the whole price of a typo.
+            onCreate = { target, branch -> viewModel.create(target, branch, onOpen) },
+        )
+    }
+
+    if (cloning) {
+        CloneRepositoryDialog(
+            suggestedFolder = parent?.let { "${it.name}/" } ?: viewModel.suggestedFolder,
+            parent = parent,
+            onPickParent = { pick(FolderWant.CLONE) },
+            onDismiss = { cloning = false },
+            onClone = { address, target, branch ->
+                viewModel.clone(address, target, branch, onOpen)
             },
         )
     }
 
-    if (creating) {
-        CreateRepositoryDialog(
-            suggestedFolder = parent?.let { "${it.name}/" } ?: viewModel.suggestedFolder,
-            parent = parent,
-            onPickParent = { pickFolder.launch(DocumentTree.initialUri()) },
-            onDismiss = { creating = false },
-            onCreate = { path, branch ->
-                creating = false
-                viewModel.create(path, branch, onOpen)
-            },
+    state.awaitingCredentials?.let { host ->
+        CredentialsDialog(
+            host = host,
+            action = stringResource(R.string.action_clone),
+            onDismiss = viewModel::cancelCredentials,
+            onConfirm = viewModel::provideCredentials,
         )
     }
 }
@@ -256,74 +309,37 @@ private fun ErrorBar(message: String, onDismiss: () -> Unit) {
     )
 }
 
-/** Asks for a folder, with the app's own folder offered as the default. */
-@Composable
-private fun FolderDialog(
-    title: String,
-    confirmLabel: String,
-    suggestedFolder: String,
-    onDismiss: () -> Unit,
-    onConfirm: (String) -> Unit,
-) {
-    var path by remember { mutableStateOf("") }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(title) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                FolderField(path = path, onPathChange = { path = it }, suggested = suggestedFolder)
-                FolderHint()
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = { onConfirm(path) },
-                enabled = path.isNotBlank(),
-            ) { Text(confirmLabel) }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
-        },
-    )
-}
-
+/**
+ * Makes a repository somewhere, in one of two shapes: straight into the folder the
+ * user picked, or into a folder named under it.
+ *
+ * The line under the name is what keeps the two honest. Before it, the picked folder
+ * was shown and then quietly ignored unless a name went with it, and the button said
+ * nothing about where the repository would end up; now the place is spelled out before
+ * the tap rather than discovered afterwards.
+ */
 @Composable
 private fun CreateRepositoryDialog(
     suggestedFolder: String,
     parent: File?,
+    defaultBranch: String,
     onPickParent: () -> Unit,
     onDismiss: () -> Unit,
-    onCreate: (String, String) -> Unit,
+    onCreate: (File, String) -> Unit,
 ) {
-    var path by remember { mutableStateOf("") }
-    var branch by remember { mutableStateOf("main") }
+    var name by remember { mutableStateOf("") }
+    var branch by remember { mutableStateOf(defaultBranch) }
+    val target = repositoryTarget(parent, name)
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.action_create_repository)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    IconButton(onClick = onPickParent) {
-                        Icon(
-                            Icons.Default.CreateNewFolder,
-                            contentDescription = stringResource(R.string.action_pick_parent),
-                        )
-                    }
-                    Text(
-                        text = parent?.path ?: stringResource(R.string.create_no_parent),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-                FolderField(path = path, onPathChange = { path = it }, suggested = suggestedFolder)
-                FolderHint()
+                ParentField(parent = parent, onPickParent = onPickParent)
+                FolderField(path = name, onPathChange = { name = it }, suggested = suggestedFolder)
+                FolderHint(text = stringResource(R.string.create_folder_hint))
+                TargetLine(target = target)
                 OutlinedTextField(
                     value = branch,
                     onValueChange = { branch = it },
@@ -335,13 +351,124 @@ private fun CreateRepositoryDialog(
         },
         confirmButton = {
             TextButton(
-                onClick = { onCreate(parent?.let { File(it, path.trim()) }?.path ?: path, branch) },
-                enabled = path.isNotBlank(),
+                onClick = { target?.let { onCreate(it, branch) } },
+                enabled = target != null,
             ) { Text(stringResource(R.string.action_create)) }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
         },
+    )
+}
+
+/**
+ * Copies an address into a folder, which is where a clone differs from the dialog
+ * beside it: the repository already exists somewhere else and only has to land.
+ *
+ * The folder name is read off the address the way `git clone` does it, and goes on
+ * being read off it until the user writes one of their own — an edit is never taken
+ * back out from under them by the next character they type. What is guessed is shown
+ * as a value rather than as a placeholder because it is the answer most of the time,
+ * and it sits above the line saying where the repository will go, so a wrong guess is
+ * corrected before the tap instead of found afterwards.
+ */
+@Composable
+private fun CloneRepositoryDialog(
+    suggestedFolder: String,
+    parent: File?,
+    onPickParent: () -> Unit,
+    onDismiss: () -> Unit,
+    onClone: (String, File, String?) -> Unit,
+) {
+    var address by remember { mutableStateOf("") }
+    var name by remember { mutableStateOf("") }
+    var namedIt by remember { mutableStateOf(false) }
+    var branch by remember { mutableStateOf("") }
+
+    val shown = if (namedIt) name else repositoryNameOf(address).orEmpty()
+    val target = repositoryTarget(parent, shown)
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.action_clone_repository)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = address,
+                    onValueChange = { address = it },
+                    label = { Text(stringResource(R.string.field_address)) },
+                    placeholder = { Text(stringResource(R.string.clone_address_hint)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                ParentField(parent = parent, onPickParent = onPickParent)
+                FolderField(
+                    path = shown,
+                    onPathChange = {
+                        namedIt = true
+                        name = it
+                    },
+                    suggested = suggestedFolder,
+                )
+                FolderHint(text = stringResource(R.string.clone_folder_hint))
+                TargetLine(target = target)
+                OutlinedTextField(
+                    value = branch,
+                    onValueChange = { branch = it },
+                    label = { Text(stringResource(R.string.field_clone_branch)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    val place = target ?: return@TextButton
+                    onClone(address, place, branch)
+                },
+                enabled = address.isNotBlank() && target != null,
+            ) { Text(stringResource(R.string.action_clone)) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+        },
+    )
+}
+
+@Composable
+private fun ParentField(parent: File?, onPickParent: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        IconButton(onClick = onPickParent) {
+            Icon(
+                Icons.Default.CreateNewFolder,
+                contentDescription = stringResource(R.string.action_pick_parent),
+            )
+        }
+        Text(
+            text = parent?.path ?: stringResource(R.string.create_no_parent),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+/** Names where the repository will actually go, before the button is pressed. */
+@Composable
+private fun TargetLine(target: File?) {
+    if (target == null) return
+    Text(
+        text = stringResource(R.string.create_target, target.path),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.primary,
+        maxLines = 2,
+        overflow = TextOverflow.Ellipsis,
     )
 }
 
@@ -358,9 +485,9 @@ private fun FolderField(path: String, onPathChange: (String) -> Unit, suggested:
 }
 
 @Composable
-private fun FolderHint() {
+private fun FolderHint(text: String) {
     Text(
-        text = stringResource(R.string.home_folder_hint),
+        text = text,
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )

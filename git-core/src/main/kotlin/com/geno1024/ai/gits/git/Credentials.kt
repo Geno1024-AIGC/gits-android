@@ -82,6 +82,29 @@ fun URIish.credentialHost(): String? = host?.lowercase()?.takeIf { it.isNotEmpty
 fun String.toHost(): String? = runCatching { URIish(this).credentialHost() }.getOrNull()
 
 /**
+ * The host a secret for this address is filed under, whatever form it was written in.
+ *
+ * [toHost] answers for anything that parses as a remote, and that is the case that
+ * decides whether a token works at all: a secret is written down against an address
+ * and read back against the name the transport asks for, and if the two spellings
+ * differ the secret is stored somewhere nothing will ever look for it.
+ *
+ * What does not parse is still a host to whoever typed it — a bare `github.com`, a
+ * host and a path, a host and a port — so rather than refuse the entry, the parts the
+ * transport never asks about are taken off. Empty means no host was there to keep,
+ * which is the answer for a local path.
+ */
+fun String.toCredentialHost(): String {
+    val address = trim()
+    return address.toHost()
+        ?: address.lowercase()
+            .substringAfter("://")
+            .substringAfterLast('@')
+            .substringBefore('/')
+            .substringBefore(':')
+}
+
+/**
  * Answers credential prompts for one remote, and refuses to answer for any other.
  *
  * Refusing matters: a provider that hands a token to an unexpected host would leak

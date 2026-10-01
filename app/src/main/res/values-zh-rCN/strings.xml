@@ -10,7 +10,6 @@
     <string name="action_add">添加</string>
     <string name="action_forget">从此列表移除</string>
     <string name="action_open_repository">打开仓库</string>
-    <string name="action_open">打开</string>
     <string name="action_pull">拉取</string>
     <string name="action_push">推送</string>
     <string name="action_create_repository">新建仓库</string>
@@ -22,9 +21,8 @@
     <string name="field_initial_branch">初始分支</string>
 
     <string name="home_empty_title">还没有仓库</string>
-    <string name="home_empty_detail">创建一个，或者点按钮把新文件夹变成仓库。</string>
+    <string name="home_empty_detail">打开已有的，或点按钮在这里新建一个、或从别处克隆一个。</string>
 
-    <string name="home_folder_hint">留空则使用应用自己的文件夹；填完整路径则使用你自己的。</string>
     <string name="repo_no_branch">无分支</string>
     <string name="credentials_title">登录 %1$s</string>
     <string name="credentials_detail">%1$s 需要用户名和密钥。它会加密保存，且只提供给 %1$s。</string>
@@ -96,6 +94,19 @@
     <string name="update_install_saved_to_downloads">已保存到「下载」；请在弹出的窗口中确认安装。</string>
     <string name="update_install_confirm">请在弹出的窗口中确认安装。</string>
     <string name="action_save">保存</string>
+    <string name="action_new">新建</string>
+    <string name="action_clone">克隆</string>
+    <string name="action_clone_repository">克隆仓库</string>
+    <string name="action_forget_account">从此主机退出登录</string>
+
+    <string name="field_address">地址</string>
+    <string name="field_host">主机或地址</string>
+    <string name="field_clone_branch">分支（留空则用远程自己的）</string>
+    <string name="clone_address_hint">https://github.com/owner/repository.git</string>
+    <string name="clone_folder_hint">名称取自地址；可选一个存放位置，或改填完整路径。</string>
+    <string name="create_folder_hint">名称留空则放入所选文件夹；未选则填完整路径。</string>
+    <string name="create_target">将存放于 %1$s</string>
+
     <string name="settings_title">设置</string>
     <string name="settings_section_you">你</string>
     <string name="settings_section_app">应用</string>
@@ -105,5 +116,10 @@
     <string name="settings_no_keys">尚无密钥</string>
     <string name="settings_keys_no_selection">持有 %1$d 个，未选择签名用</string>
     <string name="settings_keys_selected">持有 %1$d 个</string>
+    <string name="settings_section_repositories">仓库</string>
+    <string name="settings_default_branch">默认分支</string>
+    <string name="settings_default_branch_note">新建仓库以此为起点。新建对话框会预填它，也仍可修改。</string>
+    <string name="settings_accounts_none">还没有</string>
+    <string name="settings_accounts_empty">还没有主机。需要时会自动询问，也可以先在这里填好用户名和密钥。</string>
     <string name="settings_update_subtitle">检查并安装新版本</string>
 </resources>
