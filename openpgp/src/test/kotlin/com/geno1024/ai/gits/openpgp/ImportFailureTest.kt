@@ -70,6 +70,16 @@ class ImportFailureTest {
     }
 
     @Test
+    fun `a public key on its own says which half is missing`() {
+        val publicOnly = SecretKeyRing(keyring()).armoredPublicKey()
+
+        assertEquals(
+            "That file holds only the public part of an OpenPGP key. Signing a commit needs the secret part.",
+            refusal(publicOnly),
+        )
+    }
+
+    @Test
     fun `a file that is not armour at all says so without jargon`() {
         val message = refusal(byteArrayOf(0x80.toByte(), 0x01, 0x02, 0x03))
         assertEquals("That file does not look like an OpenPGP key.", message)

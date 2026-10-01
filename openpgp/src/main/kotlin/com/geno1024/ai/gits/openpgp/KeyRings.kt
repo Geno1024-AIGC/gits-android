@@ -69,6 +69,11 @@ object KeyRings {
  */
 private fun plainWordsFor(encoded: ByteArray, failure: Throwable): String {
     val label = armorLabel(encoded) ?: return "That file does not look like an OpenPGP key."
+    // `gpg --export` rather than `gpg --export-secret-keys` is the mistake this file is
+    // most likely to be, and it parses into nothing without ever looking broken.
+    if (label.equals(PUBLIC_BLOCK, ignoreCase = true)) {
+        return "That file holds only the public part of an OpenPGP key. Signing a commit needs the secret part."
+    }
     if (label.contains("PGP", ignoreCase = true)) {
         return "That OpenPGP key file could not be read: ${failure.message ?: "unknown reason"}."
     }
@@ -105,6 +110,7 @@ private fun armorLabel(encoded: ByteArray): String? {
 private const val HEAD_LIMIT = 4096
 private const val BEGIN_MARKER = "-----BEGIN "
 private const val ARMOR_CLOSE = "-----"
+private const val PUBLIC_BLOCK = "PGP PUBLIC KEY BLOCK"
 
 internal fun PGPSecretKeyRingCollection.allRings(): List<PGPSecretKeyRing> = asList()
 
