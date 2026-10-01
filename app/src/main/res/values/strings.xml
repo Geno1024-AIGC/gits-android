@@ -114,6 +114,8 @@
     <string name="clone_folder_hint">The name comes from the address. Pick a folder to hold it, or type a full path instead.</string>
     <string name="create_folder_hint">Leave the name empty to use the folder you picked; type a full path when you have not.</string>
     <string name="create_target">Goes to %1$s</string>
+    <string name="home_storage_permission_needed">This app has not been allowed to manage all files. Turn that on for it, then start again.</string>
+    <string name="home_folder_not_writable">This app cannot write to %1$s. Pick a folder under its own storage instead.</string>
 
     <string name="settings_title">Settings</string>
     <string name="settings_section_you">You</string>

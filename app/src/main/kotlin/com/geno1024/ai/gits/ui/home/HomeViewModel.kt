@@ -3,8 +3,10 @@ package com.geno1024.ai.gits.ui.home
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.geno1024.ai.gits.R
 import com.geno1024.ai.gits.data.AppSettings
 import com.geno1024.ai.gits.data.CredentialStore
+import com.geno1024.ai.gits.data.ExternalStorage
 import com.geno1024.ai.gits.data.RecentRepositories
 import com.geno1024.ai.gits.data.RecentRepository
 import com.geno1024.ai.gits.git.Gits
@@ -110,10 +112,37 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         onOpened(directory)
     }
 
+    /**
+     * What stands between [directory] and a repository made in it, or null if nothing does.
+     *
+     * Asked before the work rather than reported from inside it. Git's own account of a
+     * refused write names a lock file and an errno, and neither tells a person anything
+     * they can act on. When it is the grant that is missing, the page that grants it is
+     * opened on the way through, because a message with no way to answer it is a dead end.
+     */
+    private suspend fun refusal(directory: File): String? {
+        if (withContext(Dispatchers.IO) { ExternalStorage.isWritable(directory) }) return null
+
+        val app = getApplication<Application>()
+        val permitted = ExternalStorage.isPermitted(app)
+        if (!permitted) {
+            withContext(Dispatchers.Main) { ExternalStorage.openPermissionSettings(app) }
+        }
+        return if (permitted) {
+            app.getString(R.string.home_folder_not_writable, directory)
+        } else {
+            app.getString(R.string.home_storage_permission_needed)
+        }
+    }
+
     fun create(directory: File, initialBranch: String, onCreated: (File) -> Unit) {
         viewModelScope.launch {
             val branch = initialBranch.trim().ifEmpty { AppSettings.DEFAULT_BRANCH }
             state.update { it.copy(busy = true, error = null) }
+            refusal(directory)?.let { reason ->
+                state.update { it.copy(busy = false, error = reason) }
+                return@launch
+            }
             val failure = withContext(Dispatchers.IO) {
                 runCatching { Gits.init(directory, initialBranch = branch).close() }
                     .exceptionOrNull()
@@ -186,6 +215,10 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     private fun cloneNow(request: CloneRequest) {
         viewModelScope.launch {
             state.update { it.copy(busy = true, error = null, awaitingCredentials = null) }
+            refusal(request.directory)?.let { reason ->
+                state.update { it.copy(busy = false, error = reason) }
+                return@launch
+            }
             val failure = withContext(Dispatchers.IO) {
                 // Checked here rather than left to JGit: picking the folder the user
                 // already keeps things in is the natural thing to do, and the refusal

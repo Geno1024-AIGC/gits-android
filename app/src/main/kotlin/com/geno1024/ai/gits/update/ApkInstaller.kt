@@ -141,6 +141,9 @@ object ApkInstaller {
     }
 
     private suspend fun saveToDownloads(activity: Activity, apk: File): Uri {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            error("Downloads is a shared collection on Android 10 and later only")
+        }
         val resolver = activity.contentResolver
         val values = ContentValues().apply {
             put(MediaStore.Downloads.DISPLAY_NAME, "gits-${apk.nameWithoutExtension}.apk")

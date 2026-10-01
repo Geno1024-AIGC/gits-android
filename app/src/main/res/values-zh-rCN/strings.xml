@@ -106,6 +106,8 @@
     <string name="clone_folder_hint">名称取自地址；可选一个存放位置，或改填完整路径。</string>
     <string name="create_folder_hint">名称留空则放入所选文件夹；未选则填完整路径。</string>
     <string name="create_target">将存放于 %1$s</string>
+    <string name="home_storage_permission_needed">本应用尚未获得「所有文件访问权限」。请先为其开启，然后重新开始。</string>
+    <string name="home_folder_not_writable">本应用无法写入 %1$s。请改选它自己存储下的文件夹。</string>
 
     <string name="settings_title">设置</string>
     <string name="settings_section_you">你</string>
