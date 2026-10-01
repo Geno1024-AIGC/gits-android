@@ -53,22 +53,32 @@
     <path
         android:pathData="M72,64 m-14,0 a14,14 0,1 1,28 0 a14,14 0,1 1,-28 0"
         android:fillColor="#A62B22" />
+    <!--
+      The signature is an S, for `git -S`: the command that needs the key this app
+      holds. It is one stroke, so the letter is measured rather than drawn. The disc
+      is twenty-eight units across and the top arc, the spine and the foot all have
+      to stack inside it, which leaves them 2.8 to 3.0 units apart at the middle -
+      1.3px at the 48dp a launcher actually draws - and any tighter and the counters
+      fill in and the S collapses into a blob. Every point of the centreline is kept
+      1.8 units inside the rim, so the stroke's own edge never reaches the wax and
+      the letter stays a letter against the disc it is stamped in.
+    -->
     <path
-        android:pathData="M64,64 C65,57.5 68,56 70,60.5 C71.5,64 74,64 75.5,60 C77,56.5 79,56 79.5,58.5"
+        android:pathData="M77.5,56 C77.2,52.1 66,52.6 65.5,57.8 C65.5,62.5 78.5,56 78.5,62.3 C78.5,65.5 72,66.4 66,63.8"
         android:strokeColor="#F0E8D8"
-        android:strokeWidth="4"
+        android:strokeWidth="3"
         android:strokeLineCap="round"
         android:strokeLineJoin="round" />
     <!--
       The rule the signature sits on. The stroke on its own is only a flourish, and
       a flourish stamped in wax could be anything; writing above a straight line is
-      read as a signature without having to be legible. It is lighter than the
-      writing, as a ruled line always is, and kept 3.5 units clear of the lowest
+      read as a signature without having to be legible. It is the same weight as the
+      writing, so the two read as one pen, and kept 3.7 units clear of the lowest
       stroke so the gap survives downscaling instead of the two fusing into a blob:
       1.6px at the 48dp a launcher actually draws.
     -->
     <path
-        android:pathData="M65,71 L80,71"
+        android:pathData="M65,72 L79,72"
         android:strokeColor="#F0E8D8"
         android:strokeWidth="3"
         android:strokeLineCap="round" />
