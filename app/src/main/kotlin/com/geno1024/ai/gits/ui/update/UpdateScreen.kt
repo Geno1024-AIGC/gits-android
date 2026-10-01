@@ -28,6 +28,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
@@ -37,6 +38,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.geno1024.ai.gits.R
@@ -80,11 +84,11 @@ private fun UpdatePanel(
                         // a person needs to be told rather than left tapping.
                         val activity = context.findActivity()
                         if (activity == null) {
-                            viewModel.showMessage(noActivityMessage)
+                            viewModel.noteInstallOutcome(noActivityMessage)
                         } else {
                             // The install copies tens of megabytes, so it runs off the
                             // main thread and this scope is what the frame waits on.
-                            scope.launch { ApkInstaller.install(activity, apk, viewModel::showMessage) }
+                            scope.launch { ApkInstaller.install(activity, apk, viewModel::noteInstallOutcome) }
                         }
                     },
                     onDismissNotice = viewModel::dismiss,
@@ -117,6 +121,7 @@ fun UpdateScreen(
     viewModel: UpdateViewModel = viewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val lifecycleOwner = LocalLifecycleOwner.current
 
     // The ViewModel is kept by the navigation entry, so a return visit finds the same
     // one that was built the first time. Checking has to be asked for again from here,
@@ -124,6 +129,17 @@ fun UpdateScreen(
     LaunchedEffect(Unit) {
         viewModel.recheckIfStale()
         viewModel.refreshInstallOutcome()
+    }
+
+    // The install itself happens on top of this screen, and its outcome is written to
+    // storage by a receiver that has no view to write to. Reading it back on the way up
+    // is what stops the row being one navigation behind the tap that changed it.
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) viewModel.refreshInstallOutcome()
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     Scaffold(
@@ -222,7 +238,8 @@ private fun ReleaseCard(
                         style = MaterialTheme.typography.bodySmall,
                     )
                 } else if (state.downloaded != null) {
-                    Button(onClick = { state.downloaded?.let(onInstall) }, modifier = Modifier.fillMaxWidth()) {
+                    val downloaded = state.downloaded
+                    Button(onClick = { onInstall(downloaded) }, modifier = Modifier.fillMaxWidth()) {
                         Text(stringResource(R.string.update_install))
                     }
                 } else {
@@ -248,7 +265,10 @@ private fun ReleaseCard(
 
         // Kept separate from the transient message: this one is the answer to the last
         // attempt and stays put, because a refusal that was dismissed once would
-        // otherwise leave a button that appears to do nothing all over again.
+        // otherwise leave a button that appears to do nothing all over again. It is not
+        // coloured as an error any more because it no longer only holds errors: a tap
+        // that got as far as the platform writes here too, and a record that reads the
+        // same whether the answer was yes or no is one nobody can tell apart.
         state.lastInstallOutcome?.let { outcome ->
             Text(
                 text = stringResource(R.string.update_last_outcome_heading),
@@ -257,7 +277,7 @@ private fun ReleaseCard(
             Text(
                 text = outcome,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }

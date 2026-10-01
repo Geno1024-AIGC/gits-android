@@ -84,13 +84,13 @@
     <string name="update_install_invalid">下载的文件不是有效的安装包。</string>
     <string name="update_install_incompatible">该版本无法在此设备上运行。</string>
     <string name="update_install_no_space">空间不足，无法安装该版本。</string>
-    <string name="update_install_no_activity">此设备上没有能打开安装包的应用，因此无法从这里安装。文件已保存到下载目录。</string>
+    <string name="update_install_no_activity">此设备上没有能打开安装包的应用，因此无法从这里安装。</string>
     <string name="update_install_timeout">安装耗时过长，已放弃。</string>
     <string name="update_install_blocked">此设备上的某项设置拒绝允许本次安装。</string>
     <string name="update_install_failed">安装未完成（代码 %1$d）。</string>
     <string name="update_install_handed_off">安装已交给系统处理，结果会通过通知告知。</string>
     <string name="update_install_not_started">无法开始安装：%1$s。</string>
-    <string name="update_install_no_installer">本机没有能打开 APK 的应用，因此无法在此安装这个版本。</string>
+    <string name="update_install_permission_needed">本应用尚未被允许安装未知应用。请先为其开启该权限，然后重新点「安装」。</string>
     <string name="update_install_saved_to_downloads">已保存到「下载」；请在弹出的窗口中确认安装。</string>
     <string name="update_install_confirm">请在弹出的窗口中确认安装。</string>
     <string name="action_save">保存</string>

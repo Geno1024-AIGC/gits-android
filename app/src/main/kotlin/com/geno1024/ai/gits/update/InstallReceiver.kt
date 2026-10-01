@@ -13,16 +13,36 @@ import com.geno1024.ai.gits.R
 import com.geno1024.ai.gits.data.AppSettings
 
 /**
- * Reports how an install ended.
+ * Reports how an install ended, and asks for the confirmation the platform deferred.
  *
- * A session install finishes after this app has stopped being foreground, so the result
- * has nowhere else to go. The platform says why an install was refused, and "a
- * different signing key" is the one a person can actually do something about.
+ * Two things land here. The platform's own session result, which only a package installer
+ * session can produce, and [Intent.ACTION_MY_PACKAGE_REPLACED], which is what a build that
+ * went in through the ordinary installer reports. Between them the update screen can say
+ * what the last attempt came to either way, which is the difference between a record and
+ * a guess.
+ *
+ * [PackageInstaller.STATUS_PENDING_USER_ACTION] is the status this receiver used to
+ * swallow: committing a session does not put a confirmation on screen, it hands the app
+ * an [Intent.EXTRA_INTENT] and waits to be asked. Android's own installer launches that
+ * intent from here, and an app that does not is one whose Install button appears to do
+ * nothing at all. It is not a failure, so it is not recorded as one.
  */
 class InstallReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
-        val text = when (val result = resultCode) {
+        if (intent.action == Intent.ACTION_MY_PACKAGE_REPLACED) {
+            record(context, context.getString(R.string.update_installed))
+            return
+        }
+
+        val result = intent.getIntExtra(PackageInstaller.EXTRA_STATUS, resultCode)
+
+        if (result == PackageInstaller.STATUS_PENDING_USER_ACTION) {
+            confirm(context, intent)
+            return
+        }
+
+        val text = when (result) {
             PackageInstaller.STATUS_SUCCESS ->
                 context.getString(R.string.update_installed)
             PackageInstaller.STATUS_FAILURE_ABORTED ->
@@ -41,24 +61,69 @@ class InstallReceiver : BroadcastReceiver() {
                 context.getString(R.string.update_install_blocked)
             else -> context.getString(R.string.update_install_failed, result)
         }
+        record(context, text)
+    }
+
+    /**
+     * Puts the platform's own confirmation on screen.
+     *
+     * The app is in the foreground when this lands, because the tap that started the
+     * install is what brought the session about, so a plain start is allowed here. A
+     * device that refuses it anyway must not be left with a session nobody can see: the
+     * refusal is recorded instead, which is the answer the update screen is for.
+     */
+    private fun confirm(context: Context, intent: Intent) {
+        val confirm = intent.confirmIntent()
+        if (confirm == null) {
+            record(context, context.getString(R.string.update_install_not_started, "no confirmation was offered"))
+            return
+        }
+        runCatching { context.startActivity(confirm.addFlags(CONFIRM_FLAGS)) }
+            .onFailure { failure ->
+                record(context, context.getString(R.string.update_install_not_started, failure.message ?: "unknown reason"))
+            }
+    }
+
+    private fun record(context: Context, text: String) {
         AppSettings.of(context.applicationContext as Application).lastInstallOutcome = text
         notify(context, text)
     }
 
+    /**
+     * Notifying is a courtesy, never a requirement: without POST_NOTIFICATIONS the call
+     * is dropped, and a receiver that throws after the install already ended would take
+     * the only report of that install down with it.
+     */
     private fun notify(context: Context, text: String) {
-        val manager = context.getSystemService(NotificationManager::class.java)
-        val channel = NotificationChannel(CHANNEL, context.getString(R.string.update_channel), IMPORTANCE)
-            .also(manager::createNotificationChannel)
-        manager.notify(NOTIFICATION_ID, Notification.Builder(context, CHANNEL)
-            .setSmallIcon(android.R.drawable.stat_sys_download_done)
-            .setContentTitle(context.getString(R.string.app_name))
-            .setContentText(text)
-            .setAutoCancel(true)
-            .build())
+        runCatching {
+            val manager = context.getSystemService(NotificationManager::class.java)
+            val channel = NotificationChannel(CHANNEL, context.getString(R.string.update_channel), IMPORTANCE)
+                .also(manager::createNotificationChannel)
+            manager.notify(NOTIFICATION_ID, Notification.Builder(context, CHANNEL)
+                .setSmallIcon(android.R.drawable.stat_sys_download_done)
+                .setContentTitle(context.getString(R.string.app_name))
+                .setContentText(text)
+                .setAutoCancel(true)
+                .build())
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun Intent.confirmIntent(): Intent? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        getParcelableExtra(Intent.EXTRA_INTENT, Intent::class.java)
+    } else {
+        getParcelableExtra(Intent.EXTRA_INTENT)
     }
 
     companion object {
         const val ACTION = "com.geno1024.ai.gits.INSTALL_RESULT"
+
+        /**
+         * Starting from a receiver is not starting from an activity, so the platform
+         * insists on a task of its own. Nothing more: clearing one would take the update
+         * screen with it, which is where the answer to this is supposed to appear.
+         */
+        private const val CONFIRM_FLAGS = Intent.FLAG_ACTIVITY_NEW_TASK
 
         private const val CHANNEL = "install"
         private const val NOTIFICATION_ID = 1

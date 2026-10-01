@@ -153,8 +153,17 @@ class UpdateViewModel(application: Application) : AndroidViewModel(application) 
 
     fun dismissMessage() = state.update { it.copy(message = null) }
 
-    /** Reports back what the platform said about an install that was handed off. */
-    fun showMessage(message: String) = state.update { it.copy(message = message) }
+    /**
+     * Records what the last attempt came to, on screen and in storage alike.
+     *
+     * Written on the way in as well as on the way out: a tap that never gets as far as
+     * the platform still has to leave something behind, or the row answers a question
+     * nobody asked and looks like the button it sits under does nothing.
+     */
+    fun noteInstallOutcome(outcome: String) {
+        settings.lastInstallOutcome = outcome
+        state.update { it.copy(lastInstallOutcome = outcome, message = null) }
+    }
 
     /**
      * Picks up an outcome recorded while this screen was not open.

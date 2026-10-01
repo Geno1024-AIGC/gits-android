@@ -24,11 +24,20 @@
             </intent-filter>
         </activity>
 
+        <!--
+            How an install is reported. The first action is what a package installer
+            session answers with; the second is the platform's own notice that this
+            package was replaced, which is the only one a build installed through the
+            ordinary installer ever produces.
+        -->
         <receiver
             android:name=".update.InstallReceiver"
             android:exported="false">
             <intent-filter>
                 <action android:name="com.geno1024.ai.gits.INSTALL_RESULT" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
 
