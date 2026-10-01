@@ -11,6 +11,7 @@ import android.provider.Settings
 import android.util.Log
 import androidx.core.content.ContextCompat
 import java.io.File
+import java.io.IOException
 
 /**
  * Whether a folder outside this app's own storage can hold a repository.
@@ -54,6 +55,11 @@ object ExternalStorage {
      * A short-lived file is written and taken back again. Leaving it would put litter in
      * a folder the person is about to make a repository of, and a file that could not be
      * created is exactly the failure being looked for.
+     *
+     * Never throws. A refusal arrives as an exception rather than a `false`, and this is
+     * the question asked before doing something on the answer — the one place where a
+     * thrown refusal would be reported as an app that crashed instead of a folder that
+     * cannot be written.
      */
     fun isWritable(directory: File): Boolean {
         val host = when {
@@ -64,11 +70,13 @@ object ExternalStorage {
         if (!host.isDirectory) return false
 
         val probe = File(host, PROBE_PREFIX + System.nanoTime())
-        return try {
+        val created = try {
             probe.createNewFile()
-        } finally {
-            probe.delete()
+        } catch (refused: IOException) {
+            false
         }
+        runCatching { probe.delete() }
+        return created
     }
 
     /**
