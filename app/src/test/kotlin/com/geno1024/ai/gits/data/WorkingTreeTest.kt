@@ -120,4 +120,78 @@ class WorkingTreeTest {
             WorkingTree.create(root, "   ", directory = false)
         }
     }
+
+    @Test
+    fun `a text file reads back as what was written`() {
+        file("notes.md").writeText("# hello\n")
+
+        assertEquals("# hello\n", WorkingTree.read(root, "notes.md"))
+        assertThrows(IllegalArgumentException::class.java) { WorkingTree.read(root, "nowhere.md") }
+    }
+
+    @Test
+    fun `a file holding zeroes is refused as not text`() {
+        File(root, "blob.bin").writeBytes(byteArrayOf(1, 2, 0, 3))
+
+        assertThrows(IllegalArgumentException::class.java) { WorkingTree.read(root, "blob.bin") }
+    }
+
+    @Test
+    fun `a file too large to show says so rather than trying`() {
+        File(root, "big.txt").writeBytes(ByteArray(600 * 1024))
+
+        val refusal = assertThrows(IllegalArgumentException::class.java) {
+            WorkingTree.read(root, "big.txt")
+        }
+        assertTrue(refusal.message!!.contains("KB"), "the reason should be a size a person can picture")
+    }
+
+    @Test
+    fun `a folder and everything under it goes, and the rest does not`() {
+        file("deep/one/two/three.txt")
+        file("keep.txt")
+
+        WorkingTree.delete(root, "deep")
+
+        assertFalse(File(root, "deep").exists())
+        assertTrue(File(root, "keep.txt").exists())
+    }
+
+    @Test
+    fun `the repository itself and its git folder are not deletable`() {
+        assertThrows(IllegalArgumentException::class.java) { WorkingTree.delete(root, "") }
+        assertThrows(IllegalArgumentException::class.java) { WorkingTree.delete(root, ".git") }
+        assertThrows(IllegalArgumentException::class.java) { WorkingTree.delete(root, "../elsewhere") }
+    }
+
+    @Test
+    fun `a rename keeps the file in the folder it was in`() {
+        file("src/old.txt").writeText("content")
+
+        WorkingTree.rename(root, "src/old.txt", "new.txt")
+
+        assertFalse(File(root, "src/old.txt").exists())
+        assertEquals("content", File(root, "src/new.txt").readText())
+    }
+
+    @Test
+    fun `a rename cannot become a move or land on something else`() {
+        file("src/a.txt")
+        file("src/b.txt")
+
+        assertThrows(IllegalArgumentException::class.java) { WorkingTree.rename(root, "src/a.txt", "b.txt") }
+        assertThrows(IllegalArgumentException::class.java) { WorkingTree.rename(root, "src/a.txt", "..") }
+
+        assertTrue(File(root, "src/a.txt").exists(), "a refused rename should change nothing")
+        assertEquals("src/b.txt", File(root, "src/b.txt").readText())
+    }
+
+    @Test
+    fun `a rename to the same name does nothing rather than failing`() {
+        file("same.txt")
+
+        WorkingTree.rename(root, "same.txt", "same.txt")
+
+        assertTrue(File(root, "same.txt").exists())
+    }
 }

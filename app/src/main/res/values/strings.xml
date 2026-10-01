@@ -50,17 +50,25 @@
     <string name="repo_no_signing_key">This app holds no key that can sign yet, so commits would be unsigned.</string>
     <string name="repo_no_identity">Git needs a name and an email before it can commit</string>
 
-    <string name="repo_tab_changes">Changes</string>
+    <string name="repo_tab_working_tree">Working tree</string>
     <string name="repo_tab_history">History</string>
     <string name="repo_tab_branches">Branches</string>
     <string name="repo_tab_remotes">Remotes</string>
-    <string name="repo_tab_files">Files</string>
     <string name="repo_files_root">Repository root</string>
     <string name="repo_files_up">Up</string>
     <string name="repo_files_empty">This folder is empty.</string>
     <string name="repo_files_name">Name</string>
     <string name="repo_files_new_file">New file</string>
     <string name="repo_files_new_folder">New folder</string>
+    <string name="repo_files_more">More actions for this entry</string>
+    <string name="repo_files_rename">Rename</string>
+    <string name="repo_files_rename_label">New name</string>
+    <string name="repo_files_delete">Delete</string>
+    <string name="repo_files_delete_file">Delete %1$s?</string>
+    <string name="repo_files_delete_folder">Delete %1$s and everything under it?</string>
+    <string name="repo_files_only_changed">Changes only</string>
+    <string name="repo_files_close">Close this file</string>
+    <string name="repo_changes_none">Nothing has changed.</string>
     <string name="action_check_update">Check for updates</string>
     <string name="keys_can_sign">可签名</string>
     <string name="keys_no_passphrase">无密码</string>

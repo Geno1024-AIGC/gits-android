@@ -39,18 +39,31 @@ enum class Transfer { PUSH, PULL }
 
 /** Which pane the repository screen is showing. */
 enum class RepoTab(@StringRes val label: Int) {
-    CHANGES(R.string.repo_tab_changes),
+    WORKING_TREE(R.string.repo_tab_working_tree),
     HISTORY(R.string.repo_tab_history),
     BRANCHES(R.string.repo_tab_branches),
     REMOTES(R.string.repo_tab_remotes),
-    FILES(R.string.repo_tab_files),
+}
+
+/** One file, open for reading. [content] is already refused if it is not text to show. */
+data class Viewing(val path: String, val content: String)
+
+/** A rename or a removal waiting on the user's answer. */
+sealed interface EntryAction {
+    val path: String
+
+    /** [path] under a new name, staying in the folder it is already in. */
+    data class Rename(override val path: String, val current: String) : EntryAction
+
+    /** [path], and for a folder everything under it. */
+    data class Delete(override val path: String, val directory: Boolean) : EntryAction
 }
 
 data class RepoUiState(
     val path: String = "",
     val name: String = "",
     val branch: String? = null,
-    val tab: RepoTab = RepoTab.CHANGES,
+    val tab: RepoTab = RepoTab.WORKING_TREE,
     val loading: Boolean = true,
     val busy: Boolean = false,
     val error: String? = null,
@@ -61,8 +74,14 @@ data class RepoUiState(
     val branches: List<BranchInfo> = emptyList(),
     val remotes: List<RemoteInfo> = emptyList(),
     val files: List<WorkingEntry> = emptyList(),
-    /** The folder the Files pane is showing, relative to the root; empty means the root. */
+    /** The folder being shown, relative to the root; empty means the root. */
     val directory: String = "",
+    /** The working-tree list as a flat pile of changes instead of a folder by folder list. */
+    val onlyChanged: Boolean = false,
+    /** The file open for reading, if any. */
+    val viewing: Viewing? = null,
+    /** The entry action waiting on the user, if any. */
+    val pending: EntryAction? = null,
     val identity: Identity? = null,
     val signCommits: Boolean = false,
     /** False when the app holds no key that can sign, so the switch can be disabled. */
@@ -124,7 +143,9 @@ class RepoViewModel(
 
     fun selectTab(tab: RepoTab) {
         state.update { it.copy(tab = tab) }
-        if (tab == RepoTab.FILES) readFiles()
+        // The working tree is the pane people come back to, so it is re-read on arrival
+        // like any other pane rather than shown as whatever it last happened to be.
+        if (tab == RepoTab.WORKING_TREE) readFiles()
     }
 
     fun dismissError() = state.update { it.copy(error = null) }
@@ -159,7 +180,9 @@ class RepoViewModel(
             .onFailure { failure ->
                 state.update { it.copy(error = failure.describe("Could not read")) }
             }
-        if (state.value.tab == RepoTab.FILES) readFiles()
+        // The folder listing travels with every read, because a change made anywhere
+        // (a commit, a checkout, a rename) can have rearranged what is on disk.
+        readFiles()
     }
 
     /** Everything the screen shows, read in one go so the panes cannot disagree. */
@@ -234,6 +257,94 @@ class RepoViewModel(
         outcome
             .onSuccess { entries -> state.update { it.copy(files = entries) } }
             .onFailure { failure -> state.update { it.copy(error = failure.describe("Could not list")) } }
+    }
+
+    /** Follows a tap: into a folder, or open a file so it can be read. */
+    fun openEntry(entry: WorkingEntry) {
+        if (entry.directory) enter(entry.path) else view(entry.path)
+    }
+
+    /**
+     * Reads [target] whole so the file can be shown.
+     *
+     * Read off the main thread and refused in [WorkingTree] when it is too big or not
+     * text at all, so a folder full of photographs stays a list of names rather than
+     * turning into a screen of nothing.
+     */
+    fun view(target: String) = viewModelScope.launch {
+        state.update { it.copy(busy = true, error = null) }
+        val outcome = withContext(Dispatchers.IO) {
+            runCatching { WorkingTree.read(File(path), target) }
+        }
+        state.update { it.copy(busy = false) }
+        outcome
+            .onSuccess { text -> state.update { it.copy(viewing = Viewing(target, text)) } }
+            .onFailure { failure -> state.update { it.copy(error = failure.describe("Could not open")) } }
+    }
+
+    fun closeFile() = state.update { it.copy(viewing = null) }
+
+    /** Chooses the folder-by-folder list, or the pile of everything that has changed. */
+    fun setOnlyChanged(onlyChanged: Boolean) = state.update { it.copy(onlyChanged = onlyChanged) }
+
+    /**
+     * Asks for [name] as the new name of [path], which stays in its own folder.
+     *
+     * Both lists can reach this — the folder list knows the name it is showing, and the
+     * change list only has a path — so the name arrives from whichever one was tapped.
+     */
+    fun requestRename(path: String, name: String) = state.update {
+        it.copy(pending = EntryAction.Rename(path, name), error = null)
+    }
+
+    /**
+     * Asks whether [path] really should go.
+     *
+     * [directory] says which of the two sentences belongs under it: a folder's answer
+     * has to include everything under the folder, or the person confirming has agreed
+     * to less than they are about to lose.
+     */
+    fun requestDelete(path: String, directory: Boolean) = state.update {
+        it.copy(pending = EntryAction.Delete(path, directory), error = null)
+    }
+
+    fun cancelEntryAction() = state.update { it.copy(pending = null) }
+
+    /**
+     * Gives the entry being renamed a new name.
+     *
+     * The dialog holds what was typed, so this takes it rather than the pending state,
+     * which only records which entry the answer belongs to.
+     */
+    fun renameEntry(name: String) {
+        val target = state.value.pending as? EntryAction.Rename ?: return
+        state.update { it.copy(pending = null, busy = true, error = null) }
+        viewModelScope.launch {
+            val outcome = withContext(Dispatchers.IO) {
+                runCatching { WorkingTree.rename(File(path), target.path, name) }
+            }
+            state.update { it.copy(busy = false) }
+            outcome.onFailure { failure ->
+                state.update { it.copy(error = failure.describe("Could not rename")) }
+            }
+            refresh()
+        }
+    }
+
+    /** Removes the entry being deleted, taking a folder's contents with it. */
+    fun deleteEntry() {
+        val target = state.value.pending as? EntryAction.Delete ?: return
+        state.update { it.copy(pending = null, busy = true, error = null, viewing = null) }
+        viewModelScope.launch {
+            val outcome = withContext(Dispatchers.IO) {
+                runCatching { WorkingTree.delete(File(path), target.path) }
+            }
+            state.update { it.copy(busy = false) }
+            outcome.onFailure { failure ->
+                state.update { it.copy(error = failure.describe("Could not delete")) }
+            }
+            refresh()
+        }
     }
 
     // ------------------------------------------------------------------ staging

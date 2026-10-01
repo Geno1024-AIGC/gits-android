@@ -83,6 +83,79 @@ object WorkingTree {
     }
 
     /**
+     * The text in [path], or a sentence about why there is not any.
+     *
+     * A size limit first, because a file big enough to be a database or a video is not
+     * something anybody wants rendered into a paragraph, and a NUL byte sniff before the
+     * text is decoded, because a file that is not text decodes into characters that only
+     * look like damage. Both are refused with the reason rather than returned as a screen
+     * full of nothing.
+     */
+    fun read(root: File, path: String): String {
+        val base = root.canonicalFile
+        val target = inside(base, path)
+        if (touchesGit(base, target)) {
+            throw IllegalArgumentException("\"$path\" is the repository's own .git folder.")
+        }
+        if (!target.isFile) throw IllegalArgumentException("\"$path\" is not a file.")
+
+        val size = target.length()
+        if (size > MAX_TEXT) {
+            throw IllegalArgumentException("\"$path\" is ${size / KILOBYTE} KB, which is too much to show at once.")
+        }
+
+        val bytes = target.readBytes()
+        val sniffed = bytes.copyOfRange(0, minOf(bytes.size, BINARY_SNIFF))
+        if (sniffed.any { it == 0.toByte() }) throw IllegalArgumentException("\"$path\" is not text.")
+        return String(bytes, Charsets.UTF_8)
+    }
+
+    /**
+     * Removes [path], taking a folder's contents with it.
+     *
+     * Recursive because that is what a folder means to whoever asked, and refused for the
+     * repository itself and for `.git` because neither is a thing a person can decide to
+     * do from a list of files.
+     */
+    fun delete(root: File, path: String) {
+        val base = root.canonicalFile
+        val target = inside(base, path)
+        if (target == base) throw IllegalArgumentException("The repository itself cannot be deleted.")
+        if (touchesGit(base, target)) {
+            throw IllegalArgumentException("\"$path\" is the repository's own .git folder.")
+        }
+        if (!target.exists()) throw IllegalArgumentException("\"$path\" is no longer there.")
+        if (!target.deleteRecursively()) throw IOException("\"$path\" could not be deleted.")
+    }
+
+    /**
+     * Gives [path] the name [name], keeping it in the folder it is already in.
+     *
+     * A name rather than a destination: moving things between folders is a different
+     * question from the one being asked here, and a rename that quietly became a move
+     * would be a change nobody watched happen.
+     */
+    fun rename(root: File, path: String, name: String) {
+        val base = root.canonicalFile
+        val target = inside(base, path)
+        val wanted = name.trim()
+        if (wanted.isEmpty()) throw IllegalArgumentException("A new name is needed.")
+        if (wanted.contains('/')) throw IllegalArgumentException("A new name stays in the same folder.")
+        if (touchesGit(base, target)) {
+            throw IllegalArgumentException("\"$path\" is the repository's own .git folder.")
+        }
+        if (!target.exists()) throw IllegalArgumentException("\"$path\" is no longer there.")
+
+        val moved = File(target.parentFile, wanted).canonicalFile
+        if (moved.parentFile != target.parentFile) {
+            throw IllegalArgumentException("\"$wanted\" would take it out of this folder.")
+        }
+        if (moved == target) return
+        if (moved.exists()) throw IllegalArgumentException("\"$wanted\" already exists.")
+        if (!target.renameTo(moved)) throw IOException("\"$path\" could not be renamed.")
+    }
+
+    /**
      * The path [relative] names inside [base], or a refusal if it names somewhere else.
      *
      * Resolved rather than checked as written: `..` is not a trespass while it is text,
@@ -105,4 +178,8 @@ object WorkingTree {
         }
         return false
     }
+
+    private const val MAX_TEXT = 512 * 1024
+    private const val KILOBYTE = 1024
+    private const val BINARY_SNIFF = 8192
 }

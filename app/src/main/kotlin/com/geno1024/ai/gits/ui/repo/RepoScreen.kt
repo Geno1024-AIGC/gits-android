@@ -5,21 +5,32 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.CloudUpload
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -32,6 +43,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -48,11 +60,14 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.geno1024.ai.gits.R
+import com.geno1024.ai.gits.git.WorkingChange
 import com.geno1024.ai.gits.ui.CredentialsDialog
 import android.app.Application
 import androidx.compose.ui.platform.LocalContext
@@ -142,11 +157,10 @@ fun RepoScreen(path: String, onBack: () -> Unit, onOpenSettings: () -> Unit) {
             when {
                 state.loading -> CircularProgressIndicator(Modifier.align(Alignment.Center))
                 else -> when (state.tab) {
-                    RepoTab.CHANGES -> ChangesPane(state, viewModel)
+                    RepoTab.WORKING_TREE -> WorkingTreePane(state, viewModel)
                     RepoTab.HISTORY -> HistoryPane(state)
                     RepoTab.BRANCHES -> BranchesPane(state, viewModel)
                     RepoTab.REMOTES -> RemotesPane(state, viewModel)
-                    RepoTab.FILES -> FilesPane(state, viewModel)
                 }
             }
 
@@ -171,6 +185,10 @@ fun RepoScreen(path: String, onBack: () -> Unit, onOpenSettings: () -> Unit) {
         )
     }
 
+    state.viewing?.let { viewing ->
+        FileDialog(viewing = viewing, onDismiss = viewModel::closeFile)
+    }
+
     state.error?.let { message ->
         AlertDialog(
             onDismissRequest = viewModel::dismissError,
@@ -183,12 +201,99 @@ fun RepoScreen(path: String, onBack: () -> Unit, onOpenSettings: () -> Unit) {
     }
 }
 
+/**
+ * The working tree, and the commit that follows from it, in one pane.
+ *
+ * The two halves answer different questions — "what is on disk and how do I get at it"
+ * and "what is about to go in" — and they were separate screens until it turned out
+ * people were moving between them to answer a single question: what is this file,
+ * and what do I do with it.
+ */
 @Composable
-private fun ChangesPane(state: RepoUiState, viewModel: RepoViewModel) {
+private fun WorkingTreePane(state: RepoUiState, viewModel: RepoViewModel) {
     var message by remember { mutableStateOf("") }
     var editing by remember { mutableStateOf(false) }
+    var making by remember { mutableStateOf<NewEntry?>(null) }
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+        if (state.onlyChanged) {
+            OnlyChangedHeader(state, viewModel)
+        } else {
+            FolderHeader(state = state, viewModel = viewModel, onNew = { making = it })
+        }
+
+        HorizontalDivider()
+
+        val nothingHere = if (state.onlyChanged) state.changes.isEmpty() else state.files.isEmpty()
+        if (nothingHere) {
+            EmptyNote(
+                text = stringResource(
+                    if (state.onlyChanged) R.string.repo_changes_none else R.string.repo_files_empty,
+                ),
+                modifier = Modifier.weight(1f),
+            )
+        } else if (state.onlyChanged) {
+            LazyColumn(modifier = Modifier.weight(1f)) {
+                items(state.changes, key = { "change/${it.path}" }) { change ->
+                    ChangeRow(
+                        change = change,
+                        selected = change.path in state.selected,
+                        onToggle = { viewModel.toggleSelected(change.path) },
+                        onOpen = { viewModel.view(change.path) },
+                        onRename = {
+                            viewModel.requestRename(change.path, change.path.substringAfterLast('/'))
+                        },
+                        onDelete = { viewModel.requestDelete(change.path, directory = false) },
+                    )
+                }
+            }
+        } else {
+            LazyColumn(modifier = Modifier.weight(1f)) {
+                items(state.files, key = { "file/${it.path}" }) { entry ->
+                    val change = state.changes.firstOrNull { it.path == entry.path }
+                    // A folder is something to go into and a file is something to look
+                    // at, so one tap does whichever of the two the name stands for.
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { viewModel.openEntry(entry) }
+                            .padding(vertical = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        if (change == null) {
+                            // The gap where a checkbox would sit, so that a folder and a
+                            // file name the same place instead of dancing sideways.
+                            Spacer(modifier = Modifier.size(48.dp))
+                        } else {
+                            Checkbox(
+                                checked = entry.path in state.selected,
+                                onCheckedChange = { viewModel.toggleSelected(entry.path) },
+                            )
+                        }
+                        Text(
+                            text = if (entry.directory) "${entry.name}/" else entry.name,
+                            modifier = Modifier.weight(1f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        if (change != null) {
+                            Text(
+                                text = change.kind.name.lowercase(),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        EntryMenu(
+                            onRename = { viewModel.requestRename(entry.path, entry.name) },
+                            onDelete = { viewModel.requestDelete(entry.path, entry.directory) },
+                        )
+                    }
+                }
+            }
+        }
+
+        HorizontalDivider()
+
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -206,11 +311,21 @@ private fun ChangesPane(state: RepoUiState, viewModel: RepoViewModel) {
             }
         }
 
-        TextButton(onClick = { editing = !editing }) { Text("Who is committing?") }
-        Text(
-            text = state.identity?.let { "${it.name} <${it.email}>" } ?: stringResource(R.string.repo_no_identity),
-            style = MaterialTheme.typography.bodySmall,
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            TextButton(onClick = { editing = !editing }) { Text("Who is committing?") }
+            Text(
+                text = state.identity?.let { "${it.name} <${it.email}>" }
+                    ?: stringResource(R.string.repo_no_identity),
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
 
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -231,35 +346,6 @@ private fun ChangesPane(state: RepoUiState, viewModel: RepoViewModel) {
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-        }
-
-        if (state.changes.isEmpty()) {
-            EmptyNote("Nothing has changed.")
-        } else {
-            LazyColumn(modifier = Modifier.weight(1f, fill = false)) {
-                items(state.changes, key = { it.path }) { change ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Checkbox(
-                            checked = change.path in state.selected,
-                            onCheckedChange = { viewModel.toggleSelected(change.path) },
-                        )
-                        Text(
-                            text = change.path,
-                            modifier = Modifier.weight(1f),
-                            maxLines = 1,
-                            overflow = TextOverflow.MiddleEllipsis,
-                        )
-                        Text(
-                            text = change.kind.name.lowercase(),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-            }
         }
 
         HorizontalDivider()
@@ -295,6 +381,97 @@ private fun ChangesPane(state: RepoUiState, viewModel: RepoViewModel) {
                 editing = false
                 viewModel.setIdentity(name, email)
             },
+        )
+    }
+
+    making?.let { what ->
+        NewEntryDialog(
+            title = stringResource(
+                if (what == NewEntry.FILE) R.string.repo_files_new_file else R.string.repo_files_new_folder,
+            ),
+            onDismiss = { making = null },
+            onConfirm = { name ->
+                making = null
+                viewModel.createEntry(name, what == NewEntry.FOLDER)
+            },
+        )
+    }
+
+    when (val action = state.pending) {
+        null -> {}
+        is EntryAction.Rename -> RenameDialog(action, viewModel)
+        is EntryAction.Delete -> DeleteDialog(action, viewModel)
+    }
+}
+
+/** Where this list is, a way back up, and the two things a folder is asked for. */
+@Composable
+private fun FolderHeader(
+    state: RepoUiState,
+    viewModel: RepoViewModel,
+    onNew: (NewEntry) -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(
+            text = state.directory.ifEmpty { stringResource(R.string.repo_files_root) },
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.weight(1f),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        TextButton(onClick = viewModel::upDirectory, enabled = state.directory.isNotEmpty()) {
+            Text(stringResource(R.string.repo_files_up))
+        }
+    }
+
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        OutlinedButton(onClick = { onNew(NewEntry.FILE) }, modifier = Modifier.weight(1f)) {
+            Text(stringResource(R.string.repo_files_new_file))
+        }
+        OutlinedButton(onClick = { onNew(NewEntry.FOLDER) }, modifier = Modifier.weight(1f)) {
+            Text(stringResource(R.string.repo_files_new_folder))
+        }
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { viewModel.setOnlyChanged(!state.onlyChanged) }
+            .padding(top = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Checkbox(
+            checked = state.onlyChanged,
+            onCheckedChange = viewModel::setOnlyChanged,
+        )
+        Text(
+            text = stringResource(R.string.repo_files_only_changed),
+            style = MaterialTheme.typography.bodyMedium,
+        )
+    }
+}
+
+/** The header of the flat list, where the folders are not part of the question. */
+@Composable
+private fun OnlyChangedHeader(state: RepoUiState, viewModel: RepoViewModel) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Checkbox(
+            checked = state.onlyChanged,
+            onCheckedChange = viewModel::setOnlyChanged,
+        )
+        Text(
+            text = stringResource(R.string.repo_files_only_changed),
+            style = MaterialTheme.typography.bodyMedium,
         )
     }
 }
@@ -543,83 +720,6 @@ private fun RemotesPane(state: RepoUiState, viewModel: RepoViewModel) {
 private enum class NewEntry { FILE, FOLDER }
 
 @Composable
-private fun FilesPane(state: RepoUiState, viewModel: RepoViewModel) {
-    var making by remember { mutableStateOf<NewEntry?>(null) }
-
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Text(
-                text = state.directory.ifEmpty { stringResource(R.string.repo_files_root) },
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.weight(1f),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            TextButton(onClick = viewModel::upDirectory, enabled = state.directory.isNotEmpty()) {
-                Text(stringResource(R.string.repo_files_up))
-            }
-        }
-
-        HorizontalDivider()
-
-        if (state.files.isEmpty()) {
-            EmptyNote(stringResource(R.string.repo_files_empty))
-        } else {
-            LazyColumn(modifier = Modifier.weight(1f)) {
-                items(state.files, key = { it.path }) { entry ->
-                    // A folder is something to go into and a file is something to look
-                    // at, so only one of them answers a tap rather than both pretending.
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .then(if (entry.directory) Modifier.clickable { viewModel.enter(entry.path) } else Modifier)
-                            .padding(vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            text = if (entry.directory) "${entry.name}/" else entry.name,
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.weight(1f),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                }
-            }
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            OutlinedButton(onClick = { making = NewEntry.FILE }, modifier = Modifier.weight(1f)) {
-                Text(stringResource(R.string.repo_files_new_file))
-            }
-            OutlinedButton(onClick = { making = NewEntry.FOLDER }, modifier = Modifier.weight(1f)) {
-                Text(stringResource(R.string.repo_files_new_folder))
-            }
-        }
-    }
-
-    making?.let { what ->
-        NewEntryDialog(
-            title = stringResource(
-                if (what == NewEntry.FILE) R.string.repo_files_new_file else R.string.repo_files_new_folder,
-            ),
-            onDismiss = { making = null },
-            onConfirm = { name ->
-                making = null
-                viewModel.createEntry(name, what == NewEntry.FOLDER)
-            },
-        )
-    }
-}
-
-@Composable
 private fun NewEntryDialog(title: String, onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
     var name by remember { mutableStateOf("") }
     AlertDialog(
@@ -645,9 +745,197 @@ private fun NewEntryDialog(title: String, onDismiss: () -> Unit, onConfirm: (Str
     )
 }
 
+/** One line of the flat change list: what changed, how, and what may be done with it. */
 @Composable
-private fun EmptyNote(text: String) {
-    Box(modifier = Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
+private fun ChangeRow(
+    change: WorkingChange,
+    selected: Boolean,
+    onToggle: () -> Unit,
+    onOpen: () -> Unit,
+    onRename: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onOpen).padding(vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Checkbox(checked = selected, onCheckedChange = { onToggle() })
+        Text(
+            text = change.path,
+            modifier = Modifier.weight(1f),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Text(
+            text = change.kind.name.lowercase(),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        EntryMenu(onRename = onRename, onDelete = onDelete)
+    }
+}
+
+/**
+ * The two things an entry may be asked for, folded behind one button.
+ *
+ * Both are destructive enough to be behind a second tap, and neither deserves a
+ * permanent column of its own in a list where most rows are just names.
+ */
+@Composable
+private fun EntryMenu(onRename: () -> Unit, onDelete: () -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    Box {
+        IconButton(onClick = { open = true }) {
+            Icon(
+                Icons.Default.MoreVert,
+                contentDescription = stringResource(R.string.repo_files_more),
+            )
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.repo_files_rename)) },
+                onClick = {
+                    open = false
+                    onRename()
+                },
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.repo_files_delete)) },
+                onClick = {
+                    open = false
+                    onDelete()
+                },
+            )
+        }
+    }
+}
+
+@Composable
+private fun RenameDialog(action: EntryAction.Rename, viewModel: RepoViewModel) {
+    var name by remember(action.path) { mutableStateOf(action.current) }
+    AlertDialog(
+        onDismissRequest = viewModel::cancelEntryAction,
+        title = { Text(stringResource(R.string.repo_files_rename)) },
+        text = {
+            OutlinedTextField(
+                value = name,
+                onValueChange = { name = it },
+                label = { Text(stringResource(R.string.repo_files_rename_label)) },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { viewModel.renameEntry(name.trim()) },
+                enabled = name.isNotBlank() && name.trim() != action.current,
+            ) { Text(stringResource(R.string.action_ok)) }
+        },
+        dismissButton = {
+            TextButton(onClick = viewModel::cancelEntryAction) {
+                Text(stringResource(R.string.action_cancel))
+            }
+        },
+    )
+}
+
+/**
+ * The one question asked before anything is removed: is this really the one.
+ *
+ * A folder takes its contents with it, and the answer says so, because the difference
+ * between deleting a file and deleting a folder is not one anybody should have to
+ * remember the app's habit about.
+ */
+@Composable
+private fun DeleteDialog(action: EntryAction.Delete, viewModel: RepoViewModel) {
+    AlertDialog(
+        onDismissRequest = viewModel::cancelEntryAction,
+        title = { Text(stringResource(R.string.repo_files_delete)) },
+        text = {
+            Text(
+                stringResource(
+                    if (action.directory) {
+                        R.string.repo_files_delete_folder
+                    } else {
+                        R.string.repo_files_delete_file
+                    },
+                    action.path,
+                ),
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = viewModel::deleteEntry) {
+                Text(stringResource(R.string.repo_files_delete))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = viewModel::cancelEntryAction) {
+                Text(stringResource(R.string.action_cancel))
+            }
+        },
+    )
+}
+
+/**
+ * One file, read whole, shown as it is.
+ *
+ * Selectable because a line of a stack trace is worth copying, and monospaced because
+ * the file said so first.
+ */
+@Composable
+private fun FileDialog(viewing: Viewing, onDismiss: () -> Unit) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        Surface(
+            modifier = Modifier
+                .fillMaxSize()
+                // A dialog is not inside the screen's scaffold, so nothing above it is
+                // holding the bars back and the filename would sit under the clock.
+                .windowInsetsPadding(WindowInsets.systemBars),
+        ) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text(
+                        text = viewing.path,
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.titleSmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    IconButton(onClick = onDismiss) {
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = stringResource(R.string.repo_files_close),
+                        )
+                    }
+                }
+                HorizontalDivider()
+                SelectionContainer(
+                    modifier = Modifier
+                        .weight(1f)
+                        .verticalScroll(rememberScrollState())
+                        .padding(16.dp),
+                ) {
+                    Text(
+                        text = viewing.content,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontFamily = FontFamily.Monospace,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun EmptyNote(text: String, modifier: Modifier = Modifier.fillMaxSize()) {
+    Box(modifier = modifier.padding(32.dp), contentAlignment = Alignment.Center) {
         Text(
             text = text,
             style = MaterialTheme.typography.bodyMedium,
