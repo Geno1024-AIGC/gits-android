@@ -150,6 +150,83 @@ class Gits private constructor(
         git.reset().addPath(pattern).call()
     }
 
+    // ------------------------------------------------------------------ stash
+
+    /**
+     * Puts the working tree's changes aside, the way `git stash push` does.
+     *
+     * Returns null when there is nothing to put aside. That is an answer rather than a
+     * failure: nothing was shelved because there was nothing to shelve, and the person
+     * asking needs to know that before they go looking for their work.
+     *
+     * Untracked files are left where they are unless asked for, because a stash that
+     * swept up a build directory would be a stash nobody can read back.
+     */
+    fun stash(includeUntracked: Boolean = false): StashEntry? {
+        val commit = git.stashCreate()
+            .setIncludeUntracked(includeUntracked)
+            .call() ?: return null
+        return StashEntry(
+            ref = stashRef(0),
+            index = 0,
+            id = commit.name,
+            message = commit.fullMessage,
+            time = commit.commitTime * 1000L,
+        )
+    }
+
+    /** Every stash, the newest first. */
+    fun stashList(): List<StashEntry> = git.stashList().call().mapIndexed { index, commit ->
+        StashEntry(
+            ref = stashRef(index),
+            index = index,
+            id = commit.name,
+            message = commit.fullMessage,
+            time = commit.commitTime * 1000L,
+        )
+    }
+
+    /**
+     * Puts one stash back into the working tree, leaving it in the list.
+     *
+     * Untracked files are restored with the rest, so a stash that was taken with them
+     * comes back whole rather than in the parts git happened to recognise.
+     */
+    fun stashApply(ref: String) {
+        git.stashApply()
+            .setStashRef(ref)
+            .setRestoreUntracked(true)
+            .call()
+    }
+
+    /** Takes one stash out of the list, touching nothing else. */
+    fun stashDrop(ref: String) {
+        git.stashDrop().setStashRef(stashIndex(ref)).call()
+    }
+
+    /**
+     * Puts one stash back and takes it out of the list, which is what `pop` means.
+     *
+     * Applied before dropped, in that order on purpose: if the restore cannot go
+     * through the stash is still there to be looked at, whereas the other order would
+     * answer a failure by removing the only copy of the work.
+     */
+    fun stashPop(ref: String = stashRef(0)) {
+        stashApply(ref)
+        stashDrop(ref)
+    }
+
+    /** How git writes the name of the stash [index] places down the list. */
+    private fun stashRef(index: Int): String = "stash@{$index}"
+
+    /** The position of a name like `stash@{2}`, which is what dropping takes. */
+    private fun stashIndex(ref: String): Int {
+        val index = ref.trim().removePrefix("stash@{").removeSuffix("}").toIntOrNull()
+            ?: throw IllegalArgumentException("\"$ref\" is not one stash in this list.")
+        if (index < 0) throw IllegalArgumentException("\"$ref\" is not one stash in this list.")
+        return index
+    }
+
     // ------------------------------------------------------------------ commit
 
     /**

@@ -17,6 +17,7 @@ import com.geno1024.ai.gits.git.Identity
 import com.geno1024.ai.gits.git.LogEntry
 import com.geno1024.ai.gits.git.PushRefResult
 import com.geno1024.ai.gits.git.RemoteInfo
+import com.geno1024.ai.gits.git.StashEntry
 import com.geno1024.ai.gits.git.WorkingChange
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -82,6 +83,10 @@ data class RepoUiState(
     val viewing: Viewing? = null,
     /** The entry action waiting on the user, if any. */
     val pending: EntryAction? = null,
+    /** The stash list, newest first, as last read. */
+    val stashes: List<StashEntry> = emptyList(),
+    /** Whether the stash list is on screen. */
+    val stashesOpen: Boolean = false,
     val identity: Identity? = null,
     val signCommits: Boolean = false,
     /** False when the app holds no key that can sign, so the switch can be disabled. */
@@ -347,6 +352,87 @@ class RepoViewModel(
         }
     }
 
+    // ------------------------------------------------------------------- stash
+
+    fun openStashes() {
+        state.update { it.copy(stashesOpen = true) }
+        readStashes()
+    }
+
+    fun closeStashes() = state.update { it.copy(stashesOpen = false) }
+
+    private fun readStashes() = viewModelScope.launch {
+        val outcome = withContext(Dispatchers.IO) { runCatching { require().stashList() } }
+        outcome
+            .onSuccess { listed -> state.update { it.copy(stashes = listed) } }
+            .onFailure { failure -> state.update { it.copy(error = failure.describe("Could not read")) } }
+    }
+
+    fun stash() = stashAction(
+        failurePrefix = "Could not stash",
+        nothingText = R.string.repo_stash_nothing,
+        doneText = R.string.repo_stash_made,
+    ) { repo -> repo.stash() != null }
+
+    fun stashPop() = stashAction(
+        failurePrefix = "Could not restore",
+        nothingText = R.string.repo_stash_none,
+        doneText = R.string.repo_stash_restored,
+    ) { repo ->
+        // Asked which one first, because applying a name that names nothing would come
+        // back as git's complaint about a ref rather than as an answer to the tap.
+        val newest = repo.stashList().firstOrNull()
+        if (newest == null) false else {
+            repo.stashPop(newest.ref)
+            true
+        }
+    }
+
+    fun restoreStash(ref: String) = stashAction(
+        failurePrefix = "Could not restore",
+        nothingText = R.string.repo_stash_none,
+        doneText = R.string.repo_stash_restored,
+    ) { repo ->
+        repo.stashPop(ref)
+        true
+    }
+
+    fun dropStash(ref: String) = stashAction(
+        failurePrefix = "Could not drop",
+        nothingText = R.string.repo_stash_none,
+        doneText = R.string.repo_stash_dropped,
+    ) { repo ->
+        repo.stashDrop(ref)
+        true
+    }
+
+    /**
+     * Runs one stash operation and reports which of its answers came back: it happened,
+     * there was nothing there to act on, or git refused.
+     *
+     * Both lists are re-read afterwards, because every one of these three answers
+     * rearranges the working tree and the stash list along with it.
+     */
+    private fun stashAction(
+        failurePrefix: String,
+        nothingText: Int,
+        doneText: Int,
+        block: (Gits) -> Boolean,
+    ) = viewModelScope.launch {
+        state.update { it.copy(busy = true, error = null) }
+        val outcome = withContext(Dispatchers.IO) { runCatching { block(require()) } }
+        state.update { it.copy(busy = false) }
+        outcome
+            .onSuccess { happened ->
+                state.update {
+                    if (happened) it.copy(message = text(doneText)) else it.copy(message = text(nothingText))
+                }
+            }
+            .onFailure { failure -> state.update { it.copy(error = failure.describe(failurePrefix)) } }
+        refresh()
+        readStashes()
+    }
+
     // ------------------------------------------------------------------ staging
 
     fun toggleSelected(path: String) = state.update {
@@ -527,6 +613,10 @@ class RepoViewModel(
         state.update { it.copy(busy = false) }
         refresh()
     }
+
+    /** A sentence from the string table, which a ViewModel has to reach through its app. */
+    private fun text(@StringRes id: Int, vararg args: Any): String =
+        getApplication<Application>().getString(id, *args)
 
     override fun onCleared() {
         runCatching { gits?.close() }

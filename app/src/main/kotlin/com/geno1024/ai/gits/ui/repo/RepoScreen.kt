@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
@@ -20,6 +21,7 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.CloudUpload
@@ -32,6 +34,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -70,6 +73,8 @@ import com.geno1024.ai.gits.R
 import com.geno1024.ai.gits.git.WorkingChange
 import com.geno1024.ai.gits.ui.CredentialsDialog
 import android.app.Application
+import java.text.DateFormat
+import java.util.Date
 import androidx.compose.ui.platform.LocalContext
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -84,6 +89,10 @@ fun RepoScreen(path: String, onBack: () -> Unit, onOpenSettings: () -> Unit) {
     )
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbars = remember { SnackbarHostState() }
+    // Held here rather than in the pane so that dismissing the dialog does not throw
+    // away a message somebody was halfway through writing.
+    var committing by remember { mutableStateOf(false) }
+    var commitMessage by remember { mutableStateOf("") }
 
     // Git's answers are the useful part of most failures, so they are shown once and
     // then dismissed rather than left sitting under the next action.
@@ -152,6 +161,19 @@ fun RepoScreen(path: String, onBack: () -> Unit, onOpenSettings: () -> Unit) {
             }
         },
         snackbarHost = { SnackbarHost(snackbars) },
+        // Only on the working tree: the other panes have one thing each to do and no
+        // menu worth opening, and a button that is sometimes there and sometimes not
+        // is worse than one that is only ever where it belongs.
+        floatingActionButton = {
+            if (state.tab == RepoTab.WORKING_TREE) {
+                RepoActions(
+                    onCommit = { committing = true },
+                    onStash = viewModel::stash,
+                    onStashPop = viewModel::stashPop,
+                    onStashes = viewModel::openStashes,
+                )
+            }
+        },
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             when {
@@ -189,6 +211,20 @@ fun RepoScreen(path: String, onBack: () -> Unit, onOpenSettings: () -> Unit) {
         FileDialog(viewing = viewing, onDismiss = viewModel::closeFile)
     }
 
+    if (committing) {
+        CommitDialog(
+            state = state,
+            viewModel = viewModel,
+            message = commitMessage,
+            onMessageChange = { commitMessage = it },
+            onDismiss = { committing = false },
+        )
+    }
+
+    if (state.stashesOpen) {
+        StashesDialog(state = state, viewModel = viewModel)
+    }
+
     state.error?.let { message ->
         AlertDialog(
             onDismissRequest = viewModel::dismissError,
@@ -202,17 +238,14 @@ fun RepoScreen(path: String, onBack: () -> Unit, onOpenSettings: () -> Unit) {
 }
 
 /**
- * The working tree, and the commit that follows from it, in one pane.
+ * What is on disk, and how to get at it.
  *
- * The two halves answer different questions — "what is on disk and how do I get at it"
- * and "what is about to go in" — and they were separate screens until it turned out
- * people were moving between them to answer a single question: what is this file,
- * and what do I do with it.
+ * The commit itself is not here: it happens through the button in the corner, because
+ * writing a message and choosing a signature is a separate question from the one this
+ * pane answers, and keeping both on screen at once left neither enough room to use.
  */
 @Composable
 private fun WorkingTreePane(state: RepoUiState, viewModel: RepoViewModel) {
-    var message by remember { mutableStateOf("") }
-    var editing by remember { mutableStateOf(false) }
     var making by remember { mutableStateOf<NewEntry?>(null) }
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
@@ -220,6 +253,30 @@ private fun WorkingTreePane(state: RepoUiState, viewModel: RepoViewModel) {
             OnlyChangedHeader(state, viewModel)
         } else {
             FolderHeader(state = state, viewModel = viewModel, onNew = { making = it })
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            OutlinedButton(
+                onClick = viewModel::stageSelected,
+                enabled = state.selected.isNotEmpty(),
+            ) { Text(stringResource(R.string.repo_stage)) }
+            OutlinedButton(
+                onClick = viewModel::unstageSelected,
+                enabled = state.staged.any { it.path in state.selected },
+            ) { Text(stringResource(R.string.repo_unstage)) }
+            OutlinedButton(onClick = viewModel::selectAll, enabled = state.changes.isNotEmpty()) {
+                Text(stringResource(R.string.repo_all))
+            }
+        }
+
+        if (state.staged.isNotEmpty()) {
+            Text(
+                text = stringResource(R.string.repo_staged_count, state.staged.size),
+                style = MaterialTheme.typography.labelSmall,
+            )
         }
 
         HorizontalDivider()
@@ -291,97 +348,6 @@ private fun WorkingTreePane(state: RepoUiState, viewModel: RepoViewModel) {
                 }
             }
         }
-
-        HorizontalDivider()
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            OutlinedButton(
-                onClick = viewModel::stageSelected,
-                enabled = state.selected.isNotEmpty(),
-            ) { Text("Stage") }
-            OutlinedButton(
-                onClick = viewModel::unstageSelected,
-                enabled = state.staged.any { it.path in state.selected },
-            ) { Text("Unstage") }
-            OutlinedButton(onClick = viewModel::selectAll, enabled = state.changes.isNotEmpty()) {
-                Text("All")
-            }
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            TextButton(onClick = { editing = !editing }) { Text("Who is committing?") }
-            Text(
-                text = state.identity?.let { "${it.name} <${it.email}>" }
-                    ?: stringResource(R.string.repo_no_identity),
-                modifier = Modifier.weight(1f),
-                style = MaterialTheme.typography.bodySmall,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Switch(
-                checked = state.signCommits,
-                onCheckedChange = viewModel::setSignCommits,
-                // Offering a switch that can only fail is worse than not offering it.
-                enabled = state.signingAvailable,
-            )
-            Text("Sign commits", style = MaterialTheme.typography.bodyMedium)
-        }
-        if (!state.signingAvailable) {
-            Text(
-                text = stringResource(R.string.repo_no_signing_key),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-
-        HorizontalDivider()
-
-        OutlinedTextField(
-            value = message,
-            onValueChange = { message = it },
-            label = { Text("Commit message") },
-            modifier = Modifier.fillMaxWidth(),
-        )
-        OutlinedButton(
-            onClick = {
-                viewModel.commit(message)
-                message = ""
-            },
-            enabled = state.canCommit && message.isNotBlank() && !state.busy,
-            modifier = Modifier.fillMaxWidth(),
-        ) { Text("Commit") }
-
-        if (state.staged.isNotEmpty()) {
-            Text(
-                text = "${state.staged.size} staged",
-                style = MaterialTheme.typography.labelSmall,
-            )
-        }
-    }
-
-    if (editing) {
-        IdentityDialog(
-            current = state.identity,
-            onDismiss = { editing = false },
-            onSave = { name, email ->
-                editing = false
-                viewModel.setIdentity(name, email)
-            },
-        )
     }
 
     making?.let { what ->
@@ -402,6 +368,213 @@ private fun WorkingTreePane(state: RepoUiState, viewModel: RepoViewModel) {
         is EntryAction.Rename -> RenameDialog(action, viewModel)
         is EntryAction.Delete -> DeleteDialog(action, viewModel)
     }
+}
+
+/**
+ * Everything the working tree is asked to do besides pointing at a file.
+ *
+ * A list has room for names and not much else, so the things taken *on* the list as a
+ * whole sit behind one button instead of holding space beside it the whole time.
+ */
+@Composable
+private fun RepoActions(
+    onCommit: () -> Unit,
+    onStash: () -> Unit,
+    onStashPop: () -> Unit,
+    onStashes: () -> Unit,
+) {
+    var open by remember { mutableStateOf(false) }
+    Box {
+        FloatingActionButton(onClick = { open = true }) {
+            Icon(
+                Icons.Default.Add,
+                contentDescription = stringResource(R.string.repo_actions),
+            )
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.repo_commit_title)) },
+                onClick = {
+                    open = false
+                    onCommit()
+                },
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.repo_stash)) },
+                onClick = {
+                    open = false
+                    onStash()
+                },
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.repo_stash_pop)) },
+                onClick = {
+                    open = false
+                    onStashPop()
+                },
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.repo_stashes)) },
+                onClick = {
+                    open = false
+                    onStashes()
+                },
+            )
+        }
+    }
+}
+
+/**
+ * Writing the commit, which is a question of its own and not one the list can answer.
+ *
+ * The identity and the signature live here too: they are decisions made for this
+ * particular commit, so asking them here keeps them next to the thing they decide.
+ */
+@Composable
+private fun CommitDialog(
+    state: RepoUiState,
+    viewModel: RepoViewModel,
+    message: String,
+    onMessageChange: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var editing by remember { mutableStateOf(false) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.repo_commit_title)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = message,
+                    onValueChange = onMessageChange,
+                    label = { Text(stringResource(R.string.repo_commit_message)) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    TextButton(onClick = { editing = true }) {
+                        Text(stringResource(R.string.repo_commit_who))
+                    }
+                    Text(
+                        text = state.identity?.let { "${it.name} <${it.email}>" }
+                            ?: stringResource(R.string.repo_no_identity),
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Switch(
+                        checked = state.signCommits,
+                        onCheckedChange = viewModel::setSignCommits,
+                        // Offering a switch that can only fail is worse than not offering it.
+                        enabled = state.signingAvailable,
+                    )
+                    Text(
+                        text = stringResource(R.string.repo_commit_sign),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+
+                if (!state.signingAvailable) {
+                    Text(
+                        text = stringResource(R.string.repo_no_signing_key),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    onDismiss()
+                    viewModel.commit(message)
+                    // Cleared here rather than in the pane, because the pane is not what
+                    // opened this: a sent message should not come back next time.
+                    onMessageChange("")
+                },
+                enabled = state.canCommit && message.isNotBlank() && !state.busy,
+            ) { Text(stringResource(R.string.repo_commit_go)) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+        },
+    )
+
+    if (editing) {
+        IdentityDialog(
+            current = state.identity,
+            onDismiss = { editing = false },
+            onSave = { name, email ->
+                editing = false
+                viewModel.setIdentity(name, email)
+            },
+        )
+    }
+}
+
+/** What has been put aside, and the two things each one of them may be asked for. */
+@Composable
+private fun StashesDialog(state: RepoUiState, viewModel: RepoViewModel) {
+    AlertDialog(
+        onDismissRequest = viewModel::closeStashes,
+        title = { Text(stringResource(R.string.repo_stashes)) },
+        text = {
+            if (state.stashes.isEmpty()) {
+                Text(stringResource(R.string.repo_stash_empty))
+            } else {
+                LazyColumn(modifier = Modifier.heightIn(max = 360.dp)) {
+                    items(state.stashes, key = { it.id }) { stash ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = stash.message,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                                Text(
+                                    text = DateFormat.getDateTimeInstance().format(Date(stash.time)),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            TextButton(onClick = { viewModel.restoreStash(stash.ref) }) {
+                                Text(stringResource(R.string.repo_stash_restore))
+                            }
+                            IconButton(onClick = { viewModel.dropStash(stash.ref) }) {
+                                Icon(
+                                    Icons.Default.Close,
+                                    contentDescription = stringResource(R.string.repo_stash_drop),
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = viewModel::closeStashes) {
+                Text(stringResource(R.string.action_ok))
+            }
+        },
+    )
 }
 
 /** Where this list is, a way back up, and the two things a folder is asked for. */

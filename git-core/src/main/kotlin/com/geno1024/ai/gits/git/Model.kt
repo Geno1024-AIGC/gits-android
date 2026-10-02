@@ -39,6 +39,25 @@ data class WorkingStatus(
     val staged: List<WorkingChange> get() = changes.filter { it.kind == ChangeKind.STAGED }
 }
 
+/** One change set put aside in the stash, newest first. */
+data class StashEntry(
+    /**
+     * How git names this one: `stash@{0}` is the most recent, `stash@{1}` the one below it.
+     *
+     * Positions, not identities, so a name read from one moment is wrong once another
+     * stash has gone in front of it. Read the list again rather than holding a name.
+     */
+    val ref: String,
+    /** Where it sits in the list, counting from the newest. */
+    val index: Int,
+    /** The stash commit's id. */
+    val id: String,
+    /** What git wrote when the stash was made, which is usually one line about the edit. */
+    val message: String,
+    /** When it was made, in epoch milliseconds. */
+    val time: Long,
+)
+
 /** The result of creating a commit. */
 data class CommitResult(
     val id: String,
