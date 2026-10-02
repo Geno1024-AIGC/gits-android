@@ -83,6 +83,10 @@
     <string name="repo_commit_go">提交</string>
     <string name="repo_commit_who">谁在提交？</string>
     <string name="repo_commit_sign">签名提交</string>
+    <string name="repo_commit_busy">正在处理，请稍候再试。</string>
+    <string name="repo_commit_not_staged">还没有已暂存的改动。</string>
+    <string name="repo_commit_message_empty">提交需要一句说明。</string>
+    <string name="repo_commit_stage_all">暂存全部 (add -A)</string>
     <string name="repo_stash">储藏改动</string>
     <string name="repo_stash_pop">恢复最新的储藏</string>
     <string name="repo_stashes">储藏列表</string>

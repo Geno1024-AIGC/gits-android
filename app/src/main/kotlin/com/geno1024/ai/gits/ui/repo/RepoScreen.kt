@@ -510,6 +510,30 @@ private fun CommitDialog(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
+
+                // What the commit button is waiting for, so a greyed-out button is an
+                // answered question rather than one the user has to guess at.
+                state.commitBlock(message)?.let { block ->
+                    Text(
+                        text = stringResource(
+                            when (block) {
+                                CommitBlock.BUSY -> R.string.repo_commit_busy
+                                CommitBlock.NOTHING_STAGED -> R.string.repo_commit_not_staged
+                                CommitBlock.NO_MESSAGE -> R.string.repo_commit_message_empty
+                            },
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+
+                // Staging stays two taps where two taps make sense; this is where they
+                // happen at once, and the reason above says when that is needed.
+                if (state.unstaged.isNotEmpty()) {
+                    TextButton(onClick = viewModel::stageAll) {
+                        Text(stringResource(R.string.repo_commit_stage_all))
+                    }
+                }
             }
         },
         confirmButton = {
@@ -521,7 +545,9 @@ private fun CommitDialog(
                     // opened this: a sent message should not come back next time.
                     onMessageChange("")
                 },
-                enabled = state.canCommit && message.isNotBlank() && !state.busy,
+                // One answer to "why is this off", so the button and the reason beneath
+                // it can never disagree.
+                enabled = state.canCommit && state.commitBlock(message) == null,
             ) { Text(stringResource(R.string.repo_commit_go)) }
         },
         dismissButton = {

@@ -52,6 +52,13 @@ data class UnlockRequest(
     val note: String? = null,
 )
 
+/** Why the commit button cannot be pressed. */
+enum class CommitBlock {
+    BUSY,
+    NOTHING_STAGED,
+    NO_MESSAGE,
+}
+
 /** Which pane the repository screen is showing. */
 enum class RepoTab(@StringRes val label: Int) {
     WORKING_TREE(R.string.repo_tab_working_tree),
@@ -113,6 +120,20 @@ data class RepoUiState(
     val staged: List<WorkingChange> get() = changes.filter { it.kind == ChangeKind.STAGED }
     val unstaged: List<WorkingChange> get() = changes.filter { it.kind != ChangeKind.STAGED }
     val canCommit: Boolean get() = staged.isNotEmpty() && identity != null
+
+    /**
+     * Which of the ways committing is impossible applies right now, or null when it can.
+     *
+     * The button's own state only knows yes or no; this is the "no" spelled out, so the
+     * dialog can say what is missing rather than presenting a button that does nothing.
+     * A missing name and email is reported beside the field it belongs to instead.
+     */
+    fun commitBlock(message: String): CommitBlock? = when {
+        busy -> CommitBlock.BUSY
+        staged.isEmpty() -> CommitBlock.NOTHING_STAGED
+        message.isBlank() -> CommitBlock.NO_MESSAGE
+        else -> null
+    }
 }
 
 /**
@@ -465,6 +486,17 @@ class RepoViewModel(
 
     fun unstageSelected() = run("Could not unstage") { repo ->
         state.value.selected.forEach(repo::unstage)
+    }
+
+    /**
+     * Stages the whole working tree: the commit dialog's shortcut past the two steps.
+     *
+     * The two steps stay, because staging is where a change is looked at before it is
+     * committed and removing that would make the app quicker and less trustworthy at
+     * once. This is for the case where all of it is meant to go in anyway.
+     */
+    fun stageAll() = run("Could not stage") { repo ->
+        repo.addAll()
     }
 
     // ---------------------------------------------------------------- committing

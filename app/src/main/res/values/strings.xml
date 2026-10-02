@@ -83,6 +83,10 @@
     <string name="repo_commit_go">Commit</string>
     <string name="repo_commit_who">Who is committing?</string>
     <string name="repo_commit_sign">Sign commits</string>
+    <string name="repo_commit_busy">Something is still running; try again in a moment.</string>
+    <string name="repo_commit_not_staged">Nothing is staged yet.</string>
+    <string name="repo_commit_message_empty">A commit needs a message.</string>
+    <string name="repo_commit_stage_all">Stage everything (add -A)</string>
     <string name="repo_stash">Stash changes</string>
     <string name="repo_stash_pop">Restore the newest stash</string>
     <string name="repo_stashes">Stashes</string>
