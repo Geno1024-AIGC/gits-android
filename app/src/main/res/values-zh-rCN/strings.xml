@@ -75,7 +75,7 @@
     <string name="repo_all">全部</string>
     <string name="repo_staged_count">已暂存 %1$d 个</string>
     <string name="repo_commit_title">提交…</string>
-    <string name="repo_commit_message">提交信息</string>
+    <string name="repo_commit_message">提交说明</string>
     <string name="repo_commit_go">提交</string>
     <string name="repo_commit_who">谁在提交？</string>
     <string name="repo_commit_sign">签名提交</string>
