@@ -43,6 +43,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.geno1024.ai.gits.BuildConfig
 import com.geno1024.ai.gits.R
 import com.geno1024.ai.gits.data.AppSettings
 import com.geno1024.ai.gits.data.CredentialStore
@@ -68,6 +69,7 @@ fun SettingsScreen(
     onBack: () -> Unit,
     onOpenKeys: () -> Unit,
     onOpenUpdates: () -> Unit,
+    onOpenAbout: () -> Unit,
     viewModel: SettingsViewModel = viewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -136,6 +138,14 @@ fun SettingsScreen(
                     onClick = onOpenUpdates,
                 )
             }
+
+            item {
+                SettingsRow(
+                    title = stringResource(R.string.about_title),
+                    subtitle = BuildConfig.VERSION_NAME,
+                    onClick = onOpenAbout,
+                )
+            }
         }
     }
 
@@ -176,7 +186,7 @@ fun SettingsScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SettingsScaffold(
+fun SettingsScaffold(
     title: String,
     onBack: () -> Unit,
     content: @Composable (PaddingValues) -> Unit,
@@ -200,7 +210,7 @@ private fun SettingsScaffold(
 }
 
 @Composable
-private fun SectionHeader(title: String) {
+fun SectionHeader(title: String) {
     Text(
         text = title,
         style = MaterialTheme.typography.labelLarge,

@@ -28,6 +28,8 @@ android {
 
     buildFeatures {
         compose = true
+        // The about screen reads the stamped version name, which only BuildConfig carries.
+        buildConfig = true
     }
 
     // A build that is meant to replace an installed app has to carry the same signing

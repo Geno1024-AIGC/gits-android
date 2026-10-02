@@ -165,4 +165,13 @@
     <string name="settings_accounts_none">还没有</string>
     <string name="settings_accounts_empty">还没有主机。需要时会自动询问，也可以先在这里填好用户名和密钥。</string>
     <string name="settings_update_subtitle">检查并安装新版本</string>
+
+    <string name="about_title">关于</string>
+    <string name="about_name">软件名</string>
+    <string name="about_version">版本号</string>
+    <string name="about_terms">术语对照</string>
+    <string name="about_terms_note">同一术语在 Git 与 Pro Git 2 中译法不同时，本软件采用 Git 的译法。</string>
+    <string name="about_col_term">英文</string>
+    <string name="about_col_git">Git</string>
+    <string name="about_col_progit">Pro Git 2</string>
 </resources>

@@ -174,4 +174,13 @@
     <string name="settings_accounts_none">None yet</string>
     <string name="settings_accounts_empty">No host yet. One is asked for when it is needed, or a name and a secret can be given here first.</string>
     <string name="settings_update_subtitle">Check for and install newer builds</string>
+
+    <string name="about_title">About</string>
+    <string name="about_name">App name</string>
+    <string name="about_version">Version</string>
+    <string name="about_terms">Terminology</string>
+    <string name="about_terms_note">Where Git and Pro Git 2 translate a term differently, this app follows Git.</string>
+    <string name="about_col_term">English</string>
+    <string name="about_col_git">Git</string>
+    <string name="about_col_progit">Pro Git 2</string>
 </resources>

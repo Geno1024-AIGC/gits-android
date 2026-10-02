@@ -9,6 +9,7 @@ import androidx.navigation.navArgument
 import com.geno1024.ai.gits.ui.home.HomeScreen
 import com.geno1024.ai.gits.ui.keys.KeysScreen
 import com.geno1024.ai.gits.ui.repo.RepoScreen
+import com.geno1024.ai.gits.ui.settings.AboutScreen
 import com.geno1024.ai.gits.ui.settings.SettingsScreen
 import com.geno1024.ai.gits.ui.update.UpdateScreen
 import java.io.File
@@ -19,6 +20,7 @@ private object Routes {
     const val KEYS = "keys"
     const val SETTINGS = "settings"
     const val UPDATES = "updates"
+    const val ABOUT = "about"
 
     /** Paths go in the back stack as an argument, so they are encoded, not interpolated. */
     fun repo(path: String) = "$REPO/${java.net.URLEncoder.encode(path, "UTF-8")}"
@@ -42,6 +44,7 @@ fun GitsApp() {
                 onBack = { controller.popBackStack() },
                 onOpenKeys = { controller.navigate(Routes.KEYS) { launchSingleTop = true } },
                 onOpenUpdates = { controller.navigate(Routes.UPDATES) { launchSingleTop = true } },
+                onOpenAbout = { controller.navigate(Routes.ABOUT) { launchSingleTop = true } },
             )
         }
         // One destination each, shared by every entry point. Registering the same screen
@@ -52,6 +55,9 @@ fun GitsApp() {
         }
         composable(Routes.UPDATES) {
             UpdateScreen(onBack = { controller.popBackStack() })
+        }
+        composable(Routes.ABOUT) {
+            AboutScreen(onBack = { controller.popBackStack() })
         }
         composable(
             route = "${Routes.REPO}/{path}",
