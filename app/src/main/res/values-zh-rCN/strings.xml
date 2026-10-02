@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="app_name">Gits</string>
 
     <string name="action_back">返回</string>
@@ -13,6 +13,7 @@
     <string name="action_pull">拉取</string>
     <string name="action_push">推送</string>
     <string name="action_create_repository">新建仓库</string>
+    <string name="create_repository_action">新建仓库 (init)</string>
     <string name="action_remove_remote">移除此远程</string>
 
     <string name="error_title">出了点问题</string>
@@ -74,29 +75,30 @@
     <string name="repo_files_close">关闭此文件</string>
     <string name="repo_changes_none">没有任何改动。</string>
     <string name="repo_actions">仓库操作</string>
-    <string name="repo_stage">暂存</string>
-    <string name="repo_unstage">取消暂存</string>
+    <string name="repo_stage">暂存 (add)</string>
+    <string name="repo_unstage" tools:ignore="TypographyDashes">取消暂存 (restore --staged)</string>
     <string name="repo_all">全部</string>
     <string name="repo_staged_count">已暂存 %1$d 个</string>
     <string name="repo_commit_title">提交…</string>
     <string name="repo_commit_message">提交说明</string>
-    <string name="repo_commit_go">提交</string>
+    <string name="repo_commit_go">提交 (commit)</string>
     <string name="repo_commit_who">谁在提交？</string>
     <string name="repo_commit_sign">签名提交</string>
     <string name="repo_commit_busy">正在处理，请稍候再试。</string>
     <string name="repo_commit_not_staged">还没有已暂存的改动。</string>
     <string name="repo_commit_message_empty">提交需要一句说明。</string>
     <string name="repo_commit_stage_all">暂存全部 (add -A)</string>
-    <string name="repo_stash">储藏改动</string>
-    <string name="repo_stash_pop">恢复最新的储藏</string>
+    <string name="repo_stash">储藏改动 (stash)</string>
+    <string name="repo_stash_pop">恢复最新的储藏 (stash pop)</string>
     <string name="repo_stashes">储藏列表</string>
+    <string name="repo_stashes_action">储藏列表 (stash list)</string>
     <string name="repo_stash_empty">还没有储藏。</string>
     <string name="repo_stash_nothing">没有可以储藏的改动。</string>
     <string name="repo_stash_none">没有可以恢复的储藏。</string>
     <string name="repo_stash_made">已储藏。</string>
     <string name="repo_stash_restored">已恢复。</string>
     <string name="repo_stash_dropped">已丢弃。</string>
-    <string name="repo_stash_restore">恢复</string>
+    <string name="repo_stash_restore">恢复 (stash pop)</string>
     <string name="repo_stash_drop">丢弃此储藏</string>
     <string name="action_check_update">检查更新</string>
     <string name="keys_signs_with">使用此密钥签名提交</string>
@@ -145,6 +147,7 @@
     <string name="action_save">保存</string>
     <string name="action_new">新建</string>
     <string name="action_clone">克隆</string>
+    <string name="clone_action">克隆 (clone)</string>
     <string name="action_clone_repository">克隆仓库</string>
     <string name="action_forget_account">从此主机退出登录</string>
 

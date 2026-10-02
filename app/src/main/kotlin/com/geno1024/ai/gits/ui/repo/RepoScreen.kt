@@ -4,6 +4,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -260,6 +262,7 @@ fun RepoScreen(path: String, onBack: () -> Unit, onOpenSettings: () -> Unit) {
  * writing a message and choosing a signature is a separate question from the one this
  * pane answers, and keeping both on screen at once left neither enough room to use.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun WorkingTreePane(state: RepoUiState, viewModel: RepoViewModel) {
     var making by remember { mutableStateOf<NewEntry?>(null) }
@@ -271,7 +274,9 @@ private fun WorkingTreePane(state: RepoUiState, viewModel: RepoViewModel) {
             FolderHeader(state = state, viewModel = viewModel, onNew = { making = it })
         }
 
-        Row(
+        // Wrapping rather than fitting: the words now carry the git command they stand
+        // for, and three of those do not fit on one line of a phone in either language.
+        FlowRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
@@ -409,7 +414,7 @@ private fun RepoActions(
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             DropdownMenuItem(
-                text = { Text(stringResource(R.string.repo_commit_title)) },
+                text = { Text(stringResource(R.string.repo_commit_go)) },
                 onClick = {
                     open = false
                     onCommit()
@@ -430,7 +435,7 @@ private fun RepoActions(
                 },
             )
             DropdownMenuItem(
-                text = { Text(stringResource(R.string.repo_stashes)) },
+                text = { Text(stringResource(R.string.repo_stashes_action)) },
                 onClick = {
                     open = false
                     onStashes()

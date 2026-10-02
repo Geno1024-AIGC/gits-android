@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="app_name">Gits</string>
 
     <string name="action_back">Back</string>
@@ -13,6 +13,7 @@
     <string name="action_pull">Pull</string>
     <string name="action_push">Push</string>
     <string name="action_create_repository">New repository</string>
+    <string name="create_repository_action">New repository (init)</string>
     <string name="action_remove_remote">Remove this remote</string>
 
     <string name="error_title">Something went wrong</string>
@@ -74,8 +75,8 @@
     <string name="repo_files_close">Close this file</string>
     <string name="repo_changes_none">Nothing has changed.</string>
     <string name="repo_actions">Repository actions</string>
-    <string name="repo_stage">Stage</string>
-    <string name="repo_unstage">Unstage</string>
+    <string name="repo_stage">Stage (add)</string>
+    <string name="repo_unstage" tools:ignore="TypographyDashes">Unstage (restore --staged)</string>
     <string name="repo_all">All</string>
     <string name="repo_staged_count">%1$d staged</string>
     <string name="repo_commit_title">Commit…</string>
@@ -87,16 +88,17 @@
     <string name="repo_commit_not_staged">Nothing is staged yet.</string>
     <string name="repo_commit_message_empty">A commit needs a message.</string>
     <string name="repo_commit_stage_all">Stage everything (add -A)</string>
-    <string name="repo_stash">Stash changes</string>
-    <string name="repo_stash_pop">Restore the newest stash</string>
+    <string name="repo_stash">Stash changes (stash)</string>
+    <string name="repo_stash_pop">Restore the newest stash (stash pop)</string>
     <string name="repo_stashes">Stashes</string>
+    <string name="repo_stashes_action">Stashes (stash list)</string>
     <string name="repo_stash_empty">No stashes yet.</string>
     <string name="repo_stash_nothing">There was nothing to stash.</string>
     <string name="repo_stash_none">There is no stash to restore.</string>
     <string name="repo_stash_made">Stashed.</string>
     <string name="repo_stash_restored">Restored.</string>
     <string name="repo_stash_dropped">Dropped.</string>
-    <string name="repo_stash_restore">Restore</string>
+    <string name="repo_stash_restore">Restore (stash pop)</string>
     <string name="repo_stash_drop">Drop this stash</string>
     <string name="action_check_update">Check for updates</string>
     <string name="keys_can_sign">can sign</string>
@@ -153,6 +155,7 @@
     <string name="action_save">Save</string>
     <string name="action_new">New</string>
     <string name="action_clone">Clone</string>
+    <string name="clone_action">Clone</string>
     <string name="action_clone_repository">Clone a repository</string>
     <string name="action_forget_account">Sign out of this host</string>
 

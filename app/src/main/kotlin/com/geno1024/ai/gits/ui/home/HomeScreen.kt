@@ -149,7 +149,7 @@ fun HomeScreen(
                 }
                 DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                     DropdownMenuItem(
-                        text = { Text(stringResource(R.string.action_create_repository)) },
+                        text = { Text(stringResource(R.string.create_repository_action)) },
                         leadingIcon = { Icon(Icons.Default.CreateNewFolder, contentDescription = null) },
                         onClick = {
                             menu = false
@@ -428,7 +428,7 @@ private fun CloneRepositoryDialog(
                     onClone(address, place, branch)
                 },
                 enabled = address.isNotBlank() && target != null,
-            ) { Text(stringResource(R.string.action_clone)) }
+            ) { Text(stringResource(R.string.clone_action)) }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
