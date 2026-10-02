@@ -72,6 +72,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.geno1024.ai.gits.R
 import com.geno1024.ai.gits.git.WorkingChange
 import com.geno1024.ai.gits.ui.CredentialsDialog
+import com.geno1024.ai.gits.ui.keys.PassphraseDialog
 import android.app.Application
 import java.text.DateFormat
 import java.util.Date
@@ -209,6 +210,21 @@ fun RepoScreen(path: String, onBack: () -> Unit, onOpenSettings: () -> Unit) {
 
     state.viewing?.let { viewing ->
         FileDialog(viewing = viewing, onDismiss = viewModel::closeFile)
+    }
+
+    // The commit that asked for this is still being waited on, so the passphrase ends
+    // it rather than reporting on it.
+    state.awaitingUnlock?.let { request ->
+        PassphraseDialog(
+            title = stringResource(R.string.unlock_signing_title),
+            note = listOfNotNull(
+                stringResource(R.string.unlock_note),
+                request.note,
+            ).joinToString("\n"),
+            optional = false,
+            onDismiss = viewModel::cancelUnlock,
+            onConfirm = { viewModel.unlockSigning(request, it) },
+        )
     }
 
     if (committing) {

@@ -9,6 +9,7 @@ import com.geno1024.ai.gits.git.BranchInfo
 import com.geno1024.ai.gits.git.ChangeKind
 import com.geno1024.ai.gits.data.CredentialStore
 import com.geno1024.ai.gits.data.IdentityStore
+import com.geno1024.ai.gits.data.KeyLocked
 import com.geno1024.ai.gits.data.KeyStore
 import com.geno1024.ai.gits.data.WorkingEntry
 import com.geno1024.ai.gits.data.WorkingTree
@@ -37,6 +38,19 @@ data class CredentialRequest(
 
 /** The two operations that talk to a remote and can therefore need a secret. */
 enum class Transfer { PUSH, PULL }
+
+/**
+ * A signing key that refused to sign, and the commit that is waiting on it.
+ *
+ * Carried so the passphrase, once given, can finish the very thing that was interrupted
+ * instead of leaving the user to write the message out again.
+ */
+data class UnlockRequest(
+    val fingerprintHex: String,
+    val message: String,
+    /** What the last attempt said, so a wrong passphrase is corrected, not just reported. */
+    val note: String? = null,
+)
 
 /** Which pane the repository screen is showing. */
 enum class RepoTab(@StringRes val label: Int) {
@@ -93,6 +107,8 @@ data class RepoUiState(
     val signingAvailable: Boolean = false,
     /** A transfer waiting for the user to name themselves to a host. */
     val awaitingCredentials: CredentialRequest? = null,
+    /** A signing key that needs its passphrase before a commit can be made. */
+    val awaitingUnlock: UnlockRequest? = null,
 ) {
     val staged: List<WorkingChange> get() = changes.filter { it.kind == ChangeKind.STAGED }
     val unstaged: List<WorkingChange> get() = changes.filter { it.kind != ChangeKind.STAGED }
@@ -488,13 +504,41 @@ class RepoViewModel(
             outcome
                 .onSuccess { state.update { it.copy(message = "Committed.") } }
                 .onFailure { failure ->
-                    state.update { it.copy(error = failure.describe("The commit did not go through")) }
+                    // A locked key is not an error to read, it is a question to answer:
+                    // the commit is held and the passphrase asked for, then made.
+                    val locked = failure.asKeyLocked()
+                    if (locked != null) {
+                        state.update { it.copy(awaitingUnlock = UnlockRequest(locked.fingerprintHex, text)) }
+                    } else {
+                        state.update { it.copy(error = failure.describe("The commit did not go through")) }
+                    }
                 }
             state.update { it.copy(busy = false) }
             clearSelection()
             refresh()
         }
     }
+
+    /** Asks for the passphrase the signing key wanted, and finishes the held commit. */
+    fun unlockSigning(request: UnlockRequest, passphrase: CharArray) = viewModelScope.launch {
+        state.update { it.copy(busy = true, error = null, awaitingUnlock = null) }
+        val outcome = withContext(Dispatchers.IO) {
+            runCatching { keyStore.unlock(request.fingerprintHex, passphrase) }
+        }
+        state.update { it.copy(busy = false) }
+        outcome
+            .onSuccess { commit(request.message) }
+            .onFailure { failure ->
+                // Back to the same dialog with the answer written on it: a mistyped
+                // passphrase costs a keystroke, not the commit being written out again.
+                state.update {
+                    it.copy(awaitingUnlock = request.copy(note = failure.describe("Could not unlock the key")))
+                }
+            }
+    }
+
+    /** Gives up on the held commit, leaving whatever was staged exactly as it was. */
+    fun cancelUnlock() = state.update { it.copy(awaitingUnlock = null) }
 
     // ------------------------------------------------------------------ branches
 
@@ -632,3 +676,12 @@ class RepoViewModel(
 /** Git's own wording when it has one, which is usually the most useful part. */
 private fun Throwable.describe(prefix: String): String =
     message?.takeIf { it.isNotBlank() }?.let { "$prefix: $it" } ?: prefix
+
+/**
+ * The locked key inside this failure, however many wrappers JGit put around it.
+ *
+ * The cause chain is followed because a refusal to sign arrives as an internal error
+ * that names nothing useful, while what can settle it is a passphrase.
+ */
+private fun Throwable.asKeyLocked(): KeyLocked? =
+    generateSequence(this) { it.cause }.filterIsInstance<KeyLocked>().firstOrNull()

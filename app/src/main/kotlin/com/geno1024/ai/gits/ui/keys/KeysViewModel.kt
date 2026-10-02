@@ -103,6 +103,15 @@ class KeysViewModel(application: Application) : AndroidViewModel(application) {
 
     fun forget(key: StoredKey) = run("Could not remove the key") { keyStore.forget(key.fingerprintHex) }
 
+    /**
+     * Opens [key] for the session with the passphrase the user just typed.
+     *
+     * A wrong passphrase comes back as the error it is rather than a shrug, so the key
+     * stays locked, the list says so, and another attempt can be made.
+     */
+    fun unlock(key: StoredKey, passphrase: CharArray) =
+        run("Could not unlock the key") { keyStore.unlock(key.fingerprintHex, passphrase) }
+
     fun lockAll() = run("Could not lock the keys") { keyStore.lockAll() }
 
     fun dismissError() = state.update { it.copy(error = null) }
@@ -119,11 +128,5 @@ class KeysViewModel(application: Application) : AndroidViewModel(application) {
             }
         state.update { it.copy(busy = false) }
         refresh()
-    }
-
-    override fun onCleared() {
-        // Locking on the way out means an unlocked key does not outlive the screen
-        // that unlocked it. Tokens stay, because they are meant to.
-        keyStore.lockAll()
     }
 }

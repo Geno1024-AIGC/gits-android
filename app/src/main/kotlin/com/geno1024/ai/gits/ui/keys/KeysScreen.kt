@@ -6,8 +6,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -59,6 +61,7 @@ fun KeysScreen(onBack: () -> Unit, viewModel: KeysViewModel = viewModel()) {
     val snackbars = remember { SnackbarHostState() }
     var generating by remember { mutableStateOf(false) }
     var pendingImport by remember { mutableStateOf<Uri?>(null) }
+    var pendingUnlock by remember { mutableStateOf<StoredKey?>(null) }
     var pendingExport by remember { mutableStateOf<ExportRequest?>(null) }
 
     // The name is decided here so the exported file is recognisable, and the picker
@@ -138,6 +141,7 @@ fun KeysScreen(onBack: () -> Unit, viewModel: KeysViewModel = viewModel()) {
                             key = key,
                             signing = key.fingerprintHex == state.selected,
                             onSelect = { viewModel.select(key) },
+                            onUnlock = { pendingUnlock = key },
                             onExportPublic = { pendingExport = ExportRequest(key, public = true) },
                             onExportSecret = { pendingExport = ExportRequest(key, public = false) },
                             onForget = { viewModel.forget(key) },
@@ -206,6 +210,23 @@ fun KeysScreen(onBack: () -> Unit, viewModel: KeysViewModel = viewModel()) {
         )
     }
 
+    pendingUnlock?.let { key ->
+        PassphraseDialog(
+            title = stringResource(R.string.action_unlock),
+            note = stringResource(R.string.unlock_note),
+            optional = false,
+            onDismiss = { pendingUnlock = null },
+            onConfirm = { viewModel.unlock(key, it) },
+        )
+        // The dialog closes itself once the key opens, and stays up after a wrong
+        // passphrase so a retry costs a keystroke rather than the menu again.
+        LaunchedEffect(state.keys, key) {
+            if (state.keys.none { it.fingerprintHex == key.fingerprintHex && it.locked }) {
+                pendingUnlock = null
+            }
+        }
+    }
+
     state.error?.let { message ->
         AlertDialog(
             onDismissRequest = viewModel::dismissError,
@@ -252,6 +273,7 @@ private fun KeyRow(
     key: StoredKey,
     signing: Boolean,
     onSelect: () -> Unit,
+    onUnlock: () -> Unit,
     onExportPublic: () -> Unit,
     onExportSecret: () -> Unit,
     onForget: () -> Unit,
@@ -277,6 +299,7 @@ private fun KeyRow(
                 Text(
                     text = buildString {
                         append(key.algorithm?.name ?: stringResource(R.string.keys_other_algorithm))
+                        if (key.locked) append(" · " + stringResource(R.string.keys_locked))
                         // The separators stay in the code so a translator only ever has
                         // to hand back the words, not decide where they sit.
                         if (key.canSign) append(" · " + stringResource(R.string.keys_can_sign))
@@ -299,6 +322,17 @@ private fun KeyRow(
         Box {
             TextButton(onClick = { menu = true }) { Text(KEY_MENU_GLYPH) }
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                // Unlocking comes first because a locked key offers nothing else worth
+                // doing: it cannot sign until the passphrase has been given.
+                if (key.locked) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.action_unlock)) },
+                        onClick = {
+                            menu = false
+                            onUnlock()
+                        },
+                    )
+                }
                 if (key.canSign && !signing) {
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.action_sign_with)) },
@@ -483,9 +517,17 @@ private fun GenerateKeyDialog(
     )
 }
 
+/**
+ * Asks for the passphrase of one key, for one attempt.
+ *
+ * [optional] is what separates importing a key that may have none from opening one that
+ * certainly does: an empty answer is allowed only where it would be an answer at all.
+ */
 @Composable
-private fun PassphraseDialog(
+fun PassphraseDialog(
     title: String,
+    note: String? = null,
+    optional: Boolean = true,
     onDismiss: () -> Unit,
     onConfirm: (CharArray) -> Unit,
 ) {
@@ -494,18 +536,38 @@ private fun PassphraseDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
         text = {
-            OutlinedTextField(
-                value = passphrase,
-                onValueChange = { passphrase = it },
-                label = { Text(stringResource(R.string.field_passphrase_optional)) },
-                visualTransformation = PasswordVisualTransformation(),
-                singleLine = true,
-            )
+            Column {
+                if (note != null) {
+                    Text(
+                        text = note,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = passphrase,
+                    onValueChange = { passphrase = it },
+                    label = {
+                        Text(
+                            stringResource(
+                                if (optional) R.string.field_passphrase_optional
+                                else R.string.field_passphrase,
+                            ),
+                        )
+                    },
+                    visualTransformation = PasswordVisualTransformation(),
+                    singleLine = true,
+                )
+            }
         },
         confirmButton = {
             // An empty box is allowed because plenty of keys have no passphrase, and
             // insisting on one here would make such a key impossible to import at all.
-            TextButton(onClick = { onConfirm(passphrase.toCharArray()) }) {
+            TextButton(
+                enabled = optional || passphrase.isNotEmpty(),
+                onClick = { onConfirm(passphrase.toCharArray()) },
+            ) {
                 Text(stringResource(R.string.action_ok))
             }
         },

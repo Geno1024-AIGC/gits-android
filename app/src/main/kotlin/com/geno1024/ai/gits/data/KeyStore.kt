@@ -22,6 +22,19 @@ data class StoredKey(
     val canSign: Boolean,
     /** False for a key imported without one, which matters before it is copied anywhere. */
     val isPassphraseProtected: Boolean = true,
+    /** True while the passphrase this key needs has not been given for this session. */
+    val locked: Boolean = false,
+)
+
+/**
+ * Raised when a key still needs its passphrase, naming which key that was.
+ *
+ * A typed exception rather than a sentence, because the sentence travels up through
+ * JGit and comes back wrapped, while the person who can fix it needs to be asked for
+ * the passphrase instead of shown an error.
+ */
+class KeyLocked(val fingerprintHex: String, keyAbbreviated: String) : IllegalStateException(
+    "The key $keyAbbreviated is locked; unlock it to sign.",
 )
 
 /**
@@ -53,17 +66,7 @@ class KeyStore private constructor(context: Context) {
     val hasSigningKey: Boolean
         get() = keyrings().any { it.signingKeys.isNotEmpty() }
 
-    fun keys(): List<StoredKey> = keyrings().flatMap { ring ->
-        ring.keys.map { key ->
-            StoredKey(
-                fingerprintHex = key.fingerprintHex,
-                userId = key.primaryUserId ?: ring.primaryUserIds.firstOrNull().orEmpty(),
-                algorithm = KeyAlgorithm.of(key.algorithm),
-                canSign = key.isSigningKey,
-                isPassphraseProtected = key.isPassphraseProtected,
-            )
-        }
-    }
+    fun keys(): List<StoredKey> = keyrings().flatMap { ring -> ring.keys.map { it.toStored(ring) } }
 
     /**
      * The key commits are signed with when the repository names none.
@@ -97,10 +100,11 @@ class KeyStore private constructor(context: Context) {
                 if (!key.isPassphraseProtected) {
                     return@PassphraseSource CharArray(0)
                 }
-                unlocked[key.fingerprintHex]
-                    ?: throw IllegalStateException(
-                        "The key ${key.fingerprintAbbreviated} is locked; unlock it to sign.",
-                    )
+                // Copied because the signer wipes what it is handed, and JGit asks more
+                // than once per commit: handing back the stored array would blank it out
+                // and leave the key locked again after the first signature.
+                unlocked[key.fingerprintHex]?.copyOf()
+                    ?: throw KeyLocked(key.fingerprintHex, key.fingerprintAbbreviated)
             },
         )
     }
@@ -127,6 +131,22 @@ class KeyStore private constructor(context: Context) {
             }
         }
         return rings.flatMap { ring -> ring.keys.map { it.toStored(ring) } }
+    }
+
+    /**
+     * Accepts the passphrase for the key named by [fingerprintHex], for the session.
+     *
+     * A wrong passphrase throws and leaves the key locked; a right one is filed under
+     * every protected key in the ring, because the whole ring shares it while the signer
+     * asks for it by whichever key it chose to sign with — usually a signing subkey, not
+     * the one the list was read from.
+     */
+    fun unlock(fingerprintHex: String, passphrase: CharArray) {
+        val ring = ringFor(fingerprintHex)
+        ring.unlock(fingerprintHex, passphrase)
+        ring.keys.filter { it.isPassphraseProtected }.forEach { key ->
+            unlocked[key.fingerprintHex] = passphrase.copyOf()
+        }
     }
 
     /**
@@ -200,6 +220,9 @@ class KeyStore private constructor(context: Context) {
         algorithm = KeyAlgorithm.of(algorithm),
         canSign = isSigningKey,
         isPassphraseProtected = isPassphraseProtected,
+        // One passphrase opens the whole ring, so a ring with any key in it open is open;
+        // what the signer asks for is only ever a key inside that ring.
+        locked = isPassphraseProtected && ring.keys.none { unlocked.containsKey(it.fingerprintHex) },
     )
 
     companion object {

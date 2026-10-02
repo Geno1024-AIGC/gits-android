@@ -42,6 +42,10 @@
     <string name="action_import_key">Import key</string>
     <string name="action_remove_key">Remove this key</string>
     <string name="action_lock">Lock</string>
+    <string name="action_unlock">Unlock</string>
+    <string name="keys_locked">locked</string>
+    <string name="unlock_note">Held for this session only, never written down.</string>
+    <string name="unlock_signing_title">Unlock the signing key</string>
     <string name="field_name">Name</string>
     <string name="field_email">Email</string>
     <string name="field_passphrase">Passphrase</string>

@@ -42,6 +42,10 @@
     <string name="action_import_key">导入密钥</string>
     <string name="action_remove_key">删除此密钥</string>
     <string name="action_lock">锁定</string>
+    <string name="action_unlock">解锁</string>
+    <string name="keys_locked">已锁定</string>
+    <string name="unlock_note">只在本次运行中有效，不会写下来。</string>
+    <string name="unlock_signing_title">解锁签名密钥</string>
     <string name="field_name">姓名</string>
     <string name="field_email">邮箱</string>
     <string name="field_passphrase">密码</string>
