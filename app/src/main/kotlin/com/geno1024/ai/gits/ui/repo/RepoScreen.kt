@@ -412,6 +412,7 @@ private fun WorkingTreePane(state: RepoUiState, viewModel: RepoViewModel) {
                     ChangeRow(
                         change = change,
                         selected = change.path in state.selected,
+                        picking = state.selected.isNotEmpty(),
                         onToggle = { viewModel.toggleSelected(change.path) },
                         onOpen = { viewModel.view(change.path) },
                         onRename = {
@@ -449,19 +450,26 @@ private fun WorkingTreePane(state: RepoUiState, viewModel: RepoViewModel) {
                     // A folder is something to go into and a file is something to look
                     // at, so one tap does whichever of the two the name stands for, and
                     // a long press picks it instead — the other way to ask for a stage.
+                    // Once a selection is under way the tap joins it rather than opens
+                    // the entry, because opening would leave the selection behind
+                    // instead of adding to it.
+                    val picking = state.selected.isNotEmpty()
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .combinedClickable(
-                                onClick = { viewModel.openEntry(entry) },
+                                onClick = {
+                                    if (picking) viewModel.toggleSelected(entry.path) else viewModel.openEntry(entry)
+                                },
                                 onLongClick = { viewModel.toggleSelected(entry.path) },
                             )
                             .padding(vertical = 2.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         // A box appears once there is something to tick: a changed file
-                        // from the start, or any row the long press has picked.
-                        if (change == null && entry.path !in state.selected) {
+                        // from the start, every row while a selection is under way, or
+                        // any row the long press has picked.
+                        if (change == null && !picking) {
                             // The gap where a checkbox would sit, so that a folder and a
                             // file name the same place instead of dancing sideways.
                             Spacer(modifier = Modifier.size(48.dp))
@@ -1085,11 +1093,17 @@ private fun NewEntryDialog(title: String, onDismiss: () -> Unit, onConfirm: (Str
     )
 }
 
-/** One line of the flat change list: what changed, how, and what may be done with it. */
+/**
+ * One line of the flat change list: what changed, how, and what may be done with it.
+ *
+ * A tap opens the change while there is no selection to join, and becomes one more
+ * pick as soon as there is — the two cannot both happen at once.
+ */
 @Composable
 private fun ChangeRow(
     change: WorkingChange,
     selected: Boolean,
+    picking: Boolean,
     onToggle: () -> Unit,
     onOpen: () -> Unit,
     onRename: () -> Unit,
@@ -1098,7 +1112,10 @@ private fun ChangeRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .combinedClickable(onClick = onOpen, onLongClick = onToggle)
+            .combinedClickable(
+                onClick = { if (picking) onToggle() else onOpen() },
+                onLongClick = onToggle,
+            )
             .padding(vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
