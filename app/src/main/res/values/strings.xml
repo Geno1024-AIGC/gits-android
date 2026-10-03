@@ -74,7 +74,6 @@
     <string name="repo_files_only_changed">Changes only</string>
     <string name="repo_files_close">Close this file</string>
     <string name="repo_changes_none">Nothing has changed.</string>
-    <string name="repo_actions">Repository actions</string>
     <string name="repo_stage">Stage (add)</string>
     <string name="repo_unstage" tools:ignore="TypographyDashes">Unstage (restore --staged)</string>
     <string name="repo_select_all">All</string>
@@ -92,6 +91,9 @@
     <string name="repo_commit_message_empty">A commit needs a message.</string>
     <string name="repo_commit_stage_all">Stage everything (add -A)</string>
     <string name="repo_stash">Stash changes (stash)</string>
+    <string name="repo_stash_ask">The changes go into the stash, and can be taken back out at any time.</string>
+    <string name="repo_stash_pop_ask">The newest stash comes back into the working tree, and stops if that would conflict.</string>
+    <string name="repo_stash_action">Stash</string>
     <string name="repo_stash_pop">Restore the newest stash (stash pop)</string>
     <string name="repo_stashes">Stashes</string>
     <string name="repo_stashes_action">Stashes (stash list)</string>

@@ -24,12 +24,15 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.NoteAdd
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Commit
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
@@ -100,6 +103,12 @@ fun RepoScreen(path: String, onBack: () -> Unit, onOpenSettings: () -> Unit) {
     // away a message somebody was halfway through writing.
     var committing by remember { mutableStateOf(false) }
     var commitMessage by remember { mutableStateOf("") }
+    // The three-corner menu asks which of two or three things is meant, so the choice
+    // lives here rather than in the button that asks for it.
+    var stashPicker by remember { mutableStateOf(false) }
+    var stashAsk by remember { mutableStateOf<StashAsk?>(null) }
+    var filePicker by remember { mutableStateOf(false) }
+    var making by remember { mutableStateOf<NewEntry?>(null) }
 
     // Git's answers are the useful part of most failures, so they are shown once and
     // then dismissed rather than left sitting under the next action.
@@ -182,11 +191,10 @@ fun RepoScreen(path: String, onBack: () -> Unit, onOpenSettings: () -> Unit) {
                 // A selection swaps the corner for what a selection is for, and swaps
                 // back the moment the last box is unticked.
                 if (state.selected.isEmpty()) {
-                    RepoActions(
+                    FileActions(
                         onCommit = { committing = true },
-                        onStash = viewModel::stash,
-                        onStashPop = viewModel::stashPop,
-                        onStashes = viewModel::openStashes,
+                        onStash = { stashPicker = true },
+                        onNew = { filePicker = true },
                     )
                 } else {
                     StageActions(state = state, viewModel = viewModel)
@@ -198,7 +206,7 @@ fun RepoScreen(path: String, onBack: () -> Unit, onOpenSettings: () -> Unit) {
             when {
                 state.loading -> CircularProgressIndicator(Modifier.align(Alignment.Center))
                 else -> when (state.tab) {
-                    RepoTab.WORKING_TREE -> WorkingTreePane(state, viewModel)
+                    RepoTab.WORKING_TREE -> WorkingTreePane(state, viewModel, onNew = { making = it })
                     RepoTab.HISTORY -> HistoryPane(state)
                     RepoTab.BRANCHES -> BranchesPane(state, viewModel)
                     RepoTab.REMOTES -> RemotesPane(state, viewModel)
@@ -245,6 +253,103 @@ fun RepoScreen(path: String, onBack: () -> Unit, onOpenSettings: () -> Unit) {
         )
     }
 
+    if (stashPicker) {
+        // One button for the stash and two for what may be done with it, because they
+        // are one question in three parts rather than three unrelated actions.
+        AlertDialog(
+            onDismissRequest = { stashPicker = false },
+            title = { Text(stringResource(R.string.repo_stash_action)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    TextButton(onClick = { stashPicker = false; stashAsk = StashAsk.STASH }) {
+                        Text(stringResource(R.string.repo_stash))
+                    }
+                    TextButton(onClick = { stashPicker = false; stashAsk = StashAsk.POP }) {
+                        Text(stringResource(R.string.repo_stash_pop))
+                    }
+                    TextButton(onClick = { stashPicker = false; viewModel.openStashes() }) {
+                        Text(stringResource(R.string.repo_stashes_action))
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { stashPicker = false }) { Text(stringResource(R.string.action_cancel)) }
+            },
+        )
+    }
+
+    stashAsk?.let { ask ->
+        // Each of the two has its own page, so what is about to happen can be read
+        // before it happens rather than guessed at from a one-word button.
+        AlertDialog(
+            onDismissRequest = { stashAsk = null },
+            title = {
+                Text(
+                    stringResource(
+                        if (ask == StashAsk.STASH) R.string.repo_stash else R.string.repo_stash_pop,
+                    ),
+                )
+            },
+            text = {
+                Text(
+                    stringResource(
+                        if (ask == StashAsk.STASH) R.string.repo_stash_ask else R.string.repo_stash_pop_ask,
+                    ),
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        stashAsk = null
+                        if (ask == StashAsk.STASH) viewModel.stash() else viewModel.stashPop()
+                    },
+                ) { Text(stringResource(R.string.action_ok)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { stashAsk = null }) { Text(stringResource(R.string.action_cancel)) }
+            },
+        )
+    }
+
+    if (filePicker) {
+        AlertDialog(
+            onDismissRequest = { filePicker = false },
+            title = { Text(stringResource(R.string.action_new)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    TextButton(
+                        onClick = {
+                            filePicker = false
+                            making = NewEntry.FILE
+                        },
+                    ) { Text(stringResource(R.string.repo_files_new_file)) }
+                    TextButton(
+                        onClick = {
+                            filePicker = false
+                            making = NewEntry.FOLDER
+                        },
+                    ) { Text(stringResource(R.string.repo_files_new_folder)) }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { filePicker = false }) { Text(stringResource(R.string.action_cancel)) }
+            },
+        )
+    }
+
+    making?.let { what ->
+        NewEntryDialog(
+            title = stringResource(
+                if (what == NewEntry.FILE) R.string.repo_files_new_file else R.string.repo_files_new_folder,
+            ),
+            onDismiss = { making = null },
+            onConfirm = { name ->
+                making = null
+                viewModel.createEntry(name, what == NewEntry.FOLDER)
+            },
+        )
+    }
+
     if (committing) {
         CommitDialog(
             state = state,
@@ -280,14 +385,13 @@ fun RepoScreen(path: String, onBack: () -> Unit, onOpenSettings: () -> Unit) {
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun WorkingTreePane(state: RepoUiState, viewModel: RepoViewModel) {
-    var making by remember { mutableStateOf<NewEntry?>(null) }
+private fun WorkingTreePane(state: RepoUiState, viewModel: RepoViewModel, onNew: (NewEntry) -> Unit) {
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         if (state.onlyChanged) {
             OnlyChangedHeader(state, viewModel)
         } else {
-            FolderHeader(state = state, viewModel = viewModel, onNew = { making = it })
+            FolderHeader(state = state, viewModel = viewModel, onNew = onNew)
         }
 
         // Wrapping rather than fitting: the words now carry the git command they stand
@@ -392,19 +496,6 @@ private fun WorkingTreePane(state: RepoUiState, viewModel: RepoViewModel) {
         }
     }
 
-    making?.let { what ->
-        NewEntryDialog(
-            title = stringResource(
-                if (what == NewEntry.FILE) R.string.repo_files_new_file else R.string.repo_files_new_folder,
-            ),
-            onDismiss = { making = null },
-            onConfirm = { name ->
-                making = null
-                viewModel.createEntry(name, what == NewEntry.FOLDER)
-            },
-        )
-    }
-
     when (val action = state.pending) {
         null -> {}
         is EntryAction.Rename -> RenameDialog(action, viewModel)
@@ -413,65 +504,33 @@ private fun WorkingTreePane(state: RepoUiState, viewModel: RepoViewModel) {
 }
 
 /**
- * Everything the working tree is asked to do besides pointing at a file.
+ * The three things the working tree asks of the corner, one tap each.
  *
- * A list has room for names and not much else, so the things taken *on* the list as a
- * whole sit behind one button instead of holding space beside it the whole time.
+ * Three buttons rather than one behind a menu: commit, a stash and a new entry are
+ * what this corner is for, and nobody needed the extra choice in between.
  */
 @Composable
-private fun RepoActions(
+private fun FileActions(
     onCommit: () -> Unit,
     onStash: () -> Unit,
-    onStashPop: () -> Unit,
-    onStashes: () -> Unit,
+    onNew: () -> Unit,
 ) {
-    var open by remember { mutableStateOf(false) }
-    Box {
-        FloatingActionButton(onClick = { open = true }) {
-            Icon(
-                Icons.Default.Add,
-                contentDescription = stringResource(R.string.repo_actions),
-            )
-        }
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.repo_commit_go)) },
-                onClick = {
-                    open = false
-                    onCommit()
-                },
-            )
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.repo_stash)) },
-                onClick = {
-                    open = false
-                    onStash()
-                },
-            )
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.repo_stash_pop)) },
-                onClick = {
-                    open = false
-                    onStashPop()
-                },
-            )
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.repo_stashes_action)) },
-                onClick = {
-                    open = false
-                    onStashes()
-                },
-            )
-        }
+    Column(
+        horizontalAlignment = Alignment.End,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        // Ordered so the one taken most often, the commit, sits nearest the thumb.
+        ActionButton(icon = Icons.AutoMirrored.Filled.NoteAdd, label = stringResource(R.string.action_new), onClick = onNew)
+        ActionButton(icon = Icons.Default.Save, label = stringResource(R.string.repo_stash_action), onClick = onStash)
+        ActionButton(icon = Icons.Default.Commit, label = stringResource(R.string.repo_commit_go), onClick = onCommit)
     }
 }
-
 /**
  * The stage buttons, which are what a selection is for.
  *
  * Which of them shows is read off the selection itself: files waiting to be staged ask
  * for the first, already staged files ask for the other, and a selection holding both
- * asks for both. With nothing selected the corner keeps its menu.
+ * asks for both. With nothing selected the corner goes back to [FileActions].
  */
 @Composable
 private fun StageActions(state: RepoUiState, viewModel: RepoViewModel) {
@@ -1022,6 +1081,9 @@ private fun RemotesPane(state: RepoUiState, viewModel: RepoViewModel) {
 
 /** What the new-name dialog is being asked to make. */
 private enum class NewEntry { FILE, FOLDER }
+
+/** Which of the two stash operations the confirmation is for. */
+private enum class StashAsk { STASH, POP }
 
 @Composable
 private fun NewEntryDialog(title: String, onDismiss: () -> Unit, onConfirm: (String) -> Unit) {

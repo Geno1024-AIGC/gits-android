@@ -74,7 +74,6 @@
     <string name="repo_files_only_changed">仅显示更改</string>
     <string name="repo_files_close">关闭此文件</string>
     <string name="repo_changes_none">没有任何改动。</string>
-    <string name="repo_actions">仓库操作</string>
     <string name="repo_stage">暂存 (add)</string>
     <string name="repo_unstage" tools:ignore="TypographyDashes">取消暂存 (restore --staged)</string>
     <string name="repo_select_all">全选</string>
@@ -92,6 +91,9 @@
     <string name="repo_commit_message_empty">提交需要一句说明。</string>
     <string name="repo_commit_stage_all">暂存全部 (add -A)</string>
     <string name="repo_stash">储藏改动 (stash)</string>
+    <string name="repo_stash_ask">当前的改动会收进储藏区，随时可以取回。</string>
+    <string name="repo_stash_pop_ask">最新的储藏会回到工作区；若有冲突会停下来。</string>
+    <string name="repo_stash_action">储藏 (stash)</string>
     <string name="repo_stash_pop">恢复最新的储藏 (stash pop)</string>
     <string name="repo_stashes">储藏列表</string>
     <string name="repo_stashes_action">储藏列表 (stash list)</string>
