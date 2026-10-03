@@ -47,6 +47,47 @@ class AppSettingsTest {
         assertEquals("main", settings.initialBranch)
     }
 
+    @Test
+    fun `a theme nobody has set asks the system and takes the plain scheme`() {
+        val settings = AppSettings(MapSettings())
+        assertEquals("system", settings.themeMode)
+        assertEquals("default", settings.themePreset)
+    }
+
+    @Test
+    fun `the mode and the preset written are the ones read back`() {
+        val settings = AppSettings(MapSettings())
+        settings.themeMode = "dark"
+        settings.themePreset = "dracula"
+        assertEquals("dark", settings.themeMode)
+        assertEquals("dracula", settings.themePreset)
+    }
+
+    @Test
+    fun `the colours written are the colours read back`() {
+        val settings = AppSettings(MapSettings())
+        val colours = mapOf("primary" to 0xFF7AA2F7L, "background" to 0xFF0D1117L)
+        settings.themeColors = colours
+        assertEquals(colours, settings.themeColors)
+    }
+
+    @Test
+    fun `colours taken back leave nothing behind to read`() {
+        val settings = AppSettings(MapSettings())
+        settings.themeColors = mapOf("primary" to 0xFF7AA2F7L)
+        settings.themeColors = emptyMap()
+        assertEquals(emptyMap<String, Long>(), settings.themeColors)
+    }
+
+    @Test
+    fun `an entry that is not a colour is not read as one`() {
+        val store = MapSettings()
+        store.write(
+            strings = mapOf(AppSettings.KEY_THEME_COLORS to "primary=notacolour;onSurface=FFFFFFFF"),
+        )
+        assertEquals(mapOf("onSurface" to 0xFFFFFFFFL), AppSettings(store).themeColors)
+    }
+
     private class MapSettings : Settings {
         private val written = mutableMapOf<String, String>()
 

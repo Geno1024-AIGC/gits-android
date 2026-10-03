@@ -24,6 +24,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -53,7 +54,13 @@ import com.geno1024.ai.gits.data.StoredAccount
 import com.geno1024.ai.gits.data.StoredKey
 import com.geno1024.ai.gits.git.Identity
 import com.geno1024.ai.gits.git.toCredentialHost
+import com.geno1024.ai.gits.ui.theme.ThemeMode
+import com.geno1024.ai.gits.ui.theme.ThemePreset
+import com.geno1024.ai.gits.ui.theme.ThemeSettings
+import com.geno1024.ai.gits.ui.theme.ThemeStore
+import com.geno1024.ai.gits.ui.theme.isDark
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -73,9 +80,13 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = viewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val theme by viewModel.theme.collectAsStateWithLifecycle()
     var editingIdentity by remember { mutableStateOf(false) }
     var editingBranch by remember { mutableStateOf(false) }
     var editingAccounts by remember { mutableStateOf(false) }
+    var choosingThemeMode by remember { mutableStateOf(false) }
+    var choosingPreset by remember { mutableStateOf(false) }
+    var choosingColor by remember { mutableStateOf<String?>(null) }
 
     SettingsScaffold(
         title = stringResource(R.string.settings_title),
@@ -126,6 +137,39 @@ fun SettingsScreen(
                     title = stringResource(R.string.settings_default_branch),
                     subtitle = state.defaultBranch,
                     onClick = { editingBranch = true },
+                )
+            }
+
+            item { SectionHeader(stringResource(R.string.settings_appearance)) }
+
+            item {
+                SettingsRow(
+                    title = stringResource(R.string.settings_theme),
+                    subtitle = stringResource(theme.mode.label()),
+                    onClick = { choosingThemeMode = true },
+                )
+            }
+
+            item {
+                SettingsRow(
+                    title = stringResource(R.string.settings_theme_preset),
+                    subtitle = stringResource(theme.preset.label()),
+                    onClick = { choosingPreset = true },
+                )
+            }
+
+            // The colours a custom scheme is mixed from are only worth showing while a
+            // custom scheme is the one in use.
+            items(
+                if (theme.preset == ThemePreset.CUSTOM) CUSTOM_COLOR_SLOTS else emptyList(),
+                key = { (slot, _) -> slot },
+            ) { (slot, name) ->
+                SettingsRow(
+                    title = stringResource(name),
+                    subtitle = theme.colors[slot]
+                        ?.let { colorHex(it) }
+                        ?: stringResource(R.string.theme_custom_unset),
+                    onClick = { choosingColor = slot },
                 )
             }
 
@@ -180,6 +224,40 @@ fun SettingsScreen(
                 editingAccounts = false
             },
             onRemove = viewModel::removeAccount,
+        )
+    }
+
+    if (choosingThemeMode) {
+        ThemeChoiceDialog(
+            title = stringResource(R.string.settings_theme),
+            options = ThemeMode.entries.map { it.id to stringResource(it.label()) },
+            selected = theme.mode.id,
+            onSelect = { viewModel.setThemeMode(ThemeMode.from(it)) },
+            onDismiss = { choosingThemeMode = false },
+        )
+    }
+
+    if (choosingPreset) {
+        ThemeChoiceDialog(
+            title = stringResource(R.string.settings_theme_preset),
+            options = ThemePreset.entries.map { it.id to stringResource(it.label()) },
+            selected = theme.preset.id,
+            onSelect = { viewModel.setThemePreset(ThemePreset.from(it)) },
+            onDismiss = { choosingPreset = false },
+        )
+    }
+
+    choosingColor?.let { slot ->
+        val default = customColorDefault(slot, theme.mode.isDark())
+        ColorPickerDialog(
+            title = stringResource(CUSTOM_COLOR_SLOTS.first { (name, _) -> name == slot }.second),
+            initial = theme.colors[slot] ?: default,
+            defaultColor = default,
+            onPick = { color ->
+                viewModel.setThemeColor(slot, color.takeIf { it >= 0 })
+                choosingColor = null
+            },
+            onDismiss = { choosingColor = null },
         )
     }
 }
@@ -451,8 +529,16 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private val keyStore = KeyStore.getInstance(application)
     private val credentialStore = CredentialStore.getInstance(application)
     private val appSettings = AppSettings.of(application)
+    private val themeStore = ThemeStore.getInstance(application)
 
     val uiState = kotlinx.coroutines.flow.MutableStateFlow(SettingsUiState())
+
+    /**
+     * The theme as it stands, kept by the store rather than rebuilt here because the
+     * activity draws every screen through it: a change made on this screen has to
+     * reach the activity without waiting for the screen to be asked for state.
+     */
+    val theme: StateFlow<ThemeSettings> = themeStore.settings
 
     init {
         refresh()
@@ -479,6 +565,15 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         refresh()
     }
 
+    /** Puts the app in the light, in the dark, or on the system's answer. */
+    fun setThemeMode(mode: ThemeMode) = themeStore.setMode(mode)
+
+    /** Swaps the scheme the colours are taken from. */
+    fun setThemePreset(preset: ThemePreset) = themeStore.setPreset(preset)
+
+    /** Fills one slot of the custom scheme, or empties it so the default shows through. */
+    fun setThemeColor(slot: String, color: Long?) = themeStore.setColor(slot, color)
+
     /**
      * Keeps a name and a secret for a host.
      *
@@ -498,4 +593,100 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         credentialStore.forget(host)
         refresh()
     }
+}
+
+/**
+ * The slots a custom scheme is mixed from, each with the name it is offered under.
+ *
+ * The same seven the custom scheme reads when it is drawn: a slot named here but not
+ * read there could be set and never show, and one read but unnamed could never be set.
+ */
+private val CUSTOM_COLOR_SLOTS = listOf(
+    "primary" to R.string.theme_custom_primary,
+    "background" to R.string.theme_custom_background,
+    "surface" to R.string.theme_custom_surface,
+    "onBackground" to R.string.theme_custom_on_background,
+    "onSurface" to R.string.theme_custom_on_surface,
+    "surfaceVariant" to R.string.theme_custom_surface_variant,
+    "onSurfaceVariant" to R.string.theme_custom_on_surface_variant,
+)
+
+/** How one mode is offered in the list of them. */
+private fun ThemeMode.label() = when (this) {
+    ThemeMode.SYSTEM -> R.string.theme_system
+    ThemeMode.LIGHT -> R.string.theme_light
+    ThemeMode.DARK -> R.string.theme_dark
+}
+
+/** How one preset is offered in the list of them. */
+private fun ThemePreset.label() = when (this) {
+    ThemePreset.DEFAULT -> R.string.theme_preset_default
+    ThemePreset.GITHUB -> R.string.theme_preset_github
+    ThemePreset.TOKYO_NIGHT -> R.string.theme_preset_tokyo_night
+    ThemePreset.DRACULA -> R.string.theme_preset_dracula
+    ThemePreset.NORD -> R.string.theme_preset_nord
+    ThemePreset.ONE_DARK -> R.string.theme_preset_one_dark
+    ThemePreset.SOLARIZED -> R.string.theme_preset_solarized
+    ThemePreset.GRUVBOX -> R.string.theme_preset_gruvbox
+    ThemePreset.CATPPUCCIN -> R.string.theme_preset_catppuccin
+    ThemePreset.CHINA_RED -> R.string.theme_preset_china_red
+    ThemePreset.PERSIMMON -> R.string.theme_preset_persimmon
+    ThemePreset.LEMON -> R.string.theme_preset_lemon
+    ThemePreset.FOREST -> R.string.theme_preset_forest
+    ThemePreset.MINT -> R.string.theme_preset_mint
+    ThemePreset.SKY_BLUE -> R.string.theme_preset_sky_blue
+    ThemePreset.GRAPE -> R.string.theme_preset_grape
+    ThemePreset.CUSTOM -> R.string.theme_preset_custom
+}
+
+/** A colour as people say it out loud: six digits, no alpha, no room for the rest. */
+private fun colorHex(color: Long) = "#%06X".format(color.toInt() and 0xFFFFFF)
+
+/**
+ * Offers a short list of answers and takes one back.
+ *
+ * The answer is held here rather than applied on the tap, so a dialog dismissed without
+ * a decision leaves the setting exactly as it was.
+ */
+@Composable
+private fun ThemeChoiceDialog(
+    title: String,
+    options: List<Pair<String, String>>,
+    selected: String,
+    onSelect: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var chosen by remember { mutableStateOf(selected) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                options.forEach { (value, label) ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { chosen = value }
+                            .padding(vertical = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        RadioButton(selected = chosen == value, onClick = { chosen = value })
+                        Text(label, style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    onSelect(chosen)
+                    onDismiss()
+                },
+            ) { Text(stringResource(R.string.action_ok)) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+        },
+    )
 }
