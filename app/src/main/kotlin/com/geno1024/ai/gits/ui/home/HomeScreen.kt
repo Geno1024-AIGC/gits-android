@@ -2,6 +2,7 @@ package com.geno1024.ai.gits.ui.home
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,7 +17,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.CreateNewFolder
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Settings
@@ -71,6 +71,8 @@ fun HomeScreen(
 
     var creating by remember { mutableStateOf(false) }
     var cloning by remember { mutableStateOf(false) }
+    // The entry being taken off the list, while the answer is being thought about.
+    var forgetting by remember { mutableStateOf<RecentRepository?>(null) }
     var menu by remember { mutableStateOf(false) }
 
     /**
@@ -188,7 +190,7 @@ fun HomeScreen(
                         RepositoryRow(
                             repository = repository,
                             onOpen = { viewModel.open(repository.path, onOpen) },
-                            onForget = { viewModel.forget(repository) },
+                            onForget = { forgetting = repository },
                         )
                     }
                 }
@@ -198,6 +200,23 @@ fun HomeScreen(
                 ErrorBar(message = message, onDismiss = viewModel::clearError)
             }
         }
+    }
+
+    forgetting?.let { repository ->
+        AlertDialog(
+            onDismissRequest = { forgetting = null },
+            title = { Text(repository.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+            text = { Text(stringResource(R.string.home_forget_note)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    forgetting = null
+                    viewModel.forget(repository)
+                }) { Text(stringResource(R.string.action_forget)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { forgetting = null }) { Text(stringResource(R.string.action_cancel)) }
+            },
+        )
     }
 
     if (creating) {
@@ -246,7 +265,18 @@ private fun RepositoryRow(
     onOpen: () -> Unit,
     onForget: () -> Unit,
 ) {
-    Card(onClick = onOpen, modifier = Modifier.fillMaxWidth()) {
+    // The way off the list is a long press rather than a cross sitting on the row:
+    // a list of things to open is not a list of things a thumb should be able to hit
+    // by mistake, and the answer is asked for afterwards rather than taken at once.
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .combinedClickable(
+                onLongClickLabel = stringResource(R.string.action_forget),
+                onClick = onOpen,
+                onLongClick = onForget,
+            ),
+    ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -265,12 +295,6 @@ private fun RepositoryRow(
                     style = MaterialTheme.typography.bodySmall,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                )
-            }
-            IconButton(onClick = onForget) {
-                Icon(
-                    Icons.Default.Close,
-                    contentDescription = stringResource(R.string.action_forget),
                 )
             }
         }

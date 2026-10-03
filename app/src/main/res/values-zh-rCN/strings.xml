@@ -23,6 +23,7 @@
 
     <string name="home_empty_title">还没有仓库</string>
     <string name="home_empty_detail">打开已有的，或点按钮在这里新建一个、或从别处克隆一个。</string>
+    <string name="home_forget_note">只改动这个列表，仓库和它的文件都留在原处。</string>
 
     <string name="repo_no_branch">无分支</string>
     <string name="credentials_title">登录 %1$s</string>
