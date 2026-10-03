@@ -71,6 +71,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -1379,7 +1380,11 @@ private fun TextDialog(
                             .padding(16.dp),
                     ) {
                         Text(
-                            text = content,
+                            text = if (patch == null) {
+                                highlightedText(title, content)
+                            } else {
+                                AnnotatedString(content)
+                            },
                             style = MaterialTheme.typography.bodySmall,
                             fontFamily = FontFamily.Monospace,
                         )
