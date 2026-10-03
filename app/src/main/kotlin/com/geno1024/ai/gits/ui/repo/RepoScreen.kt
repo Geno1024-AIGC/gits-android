@@ -5,8 +5,6 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -27,13 +25,13 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.NoteAdd
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Commit
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.CloudUpload
+import androidx.compose.material.icons.filled.Commit
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
@@ -42,7 +40,6 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -145,27 +142,27 @@ fun RepoScreen(path: String, onBack: () -> Unit, onOpenSettings: () -> Unit) {
                     if (state.selected.isNotEmpty()) {
                         SelectionActions(state = state, viewModel = viewModel)
                     } else {
-                    IconButton(onClick = viewModel::refresh) {
-                        Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.action_refresh))
-                    }
-                    IconButton(onClick = viewModel::pull) {
-                        Icon(
-                            Icons.Default.CloudDownload,
-                            contentDescription = stringResource(R.string.action_pull),
-                        )
-                    }
-                    IconButton(onClick = viewModel::push) {
-                        Icon(
-                            Icons.Default.CloudUpload,
-                            contentDescription = stringResource(R.string.action_push),
-                        )
-                    }
-                    IconButton(onClick = onOpenSettings) {
-                        Icon(
-                            Icons.Default.Settings,
-                            contentDescription = stringResource(R.string.settings_title),
-                        )
-                    }
+                        IconButton(onClick = viewModel::refresh) {
+                            Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.action_refresh))
+                        }
+                        IconButton(onClick = viewModel::pull) {
+                            Icon(
+                                Icons.Default.CloudDownload,
+                                contentDescription = stringResource(R.string.action_pull),
+                            )
+                        }
+                        IconButton(onClick = viewModel::push) {
+                            Icon(
+                                Icons.Default.CloudUpload,
+                                contentDescription = stringResource(R.string.action_push),
+                            )
+                        }
+                        IconButton(onClick = onOpenSettings) {
+                            Icon(
+                                Icons.Default.Settings,
+                                contentDescription = stringResource(R.string.settings_title),
+                            )
+                        }
                     }
                 },
             )
@@ -206,7 +203,7 @@ fun RepoScreen(path: String, onBack: () -> Unit, onOpenSettings: () -> Unit) {
             when {
                 state.loading -> CircularProgressIndicator(Modifier.align(Alignment.Center))
                 else -> when (state.tab) {
-                    RepoTab.WORKING_TREE -> WorkingTreePane(state, viewModel, onNew = { making = it })
+                    RepoTab.WORKING_TREE -> WorkingTreePane(state, viewModel)
                     RepoTab.HISTORY -> HistoryPane(state)
                     RepoTab.BRANCHES -> BranchesPane(state, viewModel)
                     RepoTab.REMOTES -> RemotesPane(state, viewModel)
@@ -383,34 +380,13 @@ fun RepoScreen(path: String, onBack: () -> Unit, onOpenSettings: () -> Unit) {
  * writing a message and choosing a signature is a separate question from the one this
  * pane answers, and keeping both on screen at once left neither enough room to use.
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun WorkingTreePane(state: RepoUiState, viewModel: RepoViewModel, onNew: (NewEntry) -> Unit) {
-
+private fun WorkingTreePane(state: RepoUiState, viewModel: RepoViewModel) {
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         if (state.onlyChanged) {
             OnlyChangedHeader(state, viewModel)
         } else {
-            FolderHeader(state = state, viewModel = viewModel, onNew = onNew)
-        }
-
-        // Wrapping rather than fitting: the words now carry the git command they stand
-        // for, and three of those do not fit on one line of a phone in either language.
-        FlowRow(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            OutlinedButton(
-                onClick = viewModel::stageSelected,
-                enabled = state.selected.isNotEmpty(),
-            ) { Text(stringResource(R.string.repo_stage)) }
-            OutlinedButton(
-                onClick = viewModel::unstageSelected,
-                enabled = state.staged.any { it.path in state.selected },
-            ) { Text(stringResource(R.string.repo_unstage)) }
-            OutlinedButton(onClick = viewModel::selectAll, enabled = state.changes.isNotEmpty()) {
-                Text(stringResource(R.string.repo_all))
-            }
+            FolderHeader(state = state, viewModel = viewModel)
         }
 
         if (state.staged.isNotEmpty()) {
@@ -447,10 +423,32 @@ private fun WorkingTreePane(state: RepoUiState, viewModel: RepoViewModel, onNew:
             }
         } else {
             LazyColumn(modifier = Modifier.weight(1f)) {
+                // The way back up, named the way every file list names it. It sits in
+                // the list because that is where the folders are, and it is only there
+                // when there is a folder above to go to.
+                if (state.directory.isNotEmpty()) {
+                    item(key = "..") {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { viewModel.upDirectory() }
+                                .padding(vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Spacer(modifier = Modifier.size(48.dp))
+                            Text(
+                                text = "..",
+                                modifier = Modifier.weight(1f),
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
+                        }
+                    }
+                }
                 items(state.files, key = { "file/${it.path}" }) { entry ->
                     val change = state.changes.firstOrNull { it.path == entry.path }
                     // A folder is something to go into and a file is something to look
-                    // at, so one tap does whichever of the two the name stands for.
+                    // at, so one tap does whichever of the two the name stands for, and
+                    // a long press picks it instead — the other way to ask for a stage.
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -525,6 +523,7 @@ private fun FileActions(
         ActionButton(icon = Icons.Default.Commit, label = stringResource(R.string.repo_commit_go), onClick = onCommit)
     }
 }
+
 /**
  * The stage buttons, which are what a selection is for.
  *
@@ -767,41 +766,16 @@ private fun StashesDialog(state: RepoUiState, viewModel: RepoViewModel) {
     )
 }
 
-/** Where this list is, a way back up, and the two things a folder is asked for. */
+/** Where this list is, and the one question the list itself is asked. */
 @Composable
-private fun FolderHeader(
-    state: RepoUiState,
-    viewModel: RepoViewModel,
-    onNew: (NewEntry) -> Unit,
-) {
-    Row(
+private fun FolderHeader(state: RepoUiState, viewModel: RepoViewModel) {
+    Text(
+        text = state.directory.ifEmpty { stringResource(R.string.repo_files_root) },
+        style = MaterialTheme.typography.bodyMedium,
         modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Text(
-            text = state.directory.ifEmpty { stringResource(R.string.repo_files_root) },
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.weight(1f),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-        TextButton(onClick = viewModel::upDirectory, enabled = state.directory.isNotEmpty()) {
-            Text(stringResource(R.string.repo_files_up))
-        }
-    }
-
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        OutlinedButton(onClick = { onNew(NewEntry.FILE) }, modifier = Modifier.weight(1f)) {
-            Text(stringResource(R.string.repo_files_new_file))
-        }
-        OutlinedButton(onClick = { onNew(NewEntry.FOLDER) }, modifier = Modifier.weight(1f)) {
-            Text(stringResource(R.string.repo_files_new_folder))
-        }
-    }
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+    )
 
     Row(
         modifier = Modifier

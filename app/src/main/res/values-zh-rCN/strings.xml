@@ -60,7 +60,6 @@
     <string name="repo_tab_branches">分支</string>
     <string name="repo_tab_remotes">远程</string>
     <string name="repo_files_root">仓库根目录</string>
-    <string name="repo_files_up">上一级</string>
     <string name="repo_files_empty">这个文件夹是空的。</string>
     <string name="repo_files_name">名称</string>
     <string name="repo_files_new_file">新建文件</string>
@@ -79,7 +78,6 @@
     <string name="repo_select_all">全选</string>
     <string name="repo_select_none">取消全选</string>
     <string name="repo_select_invert">反选</string>
-    <string name="repo_all">全部</string>
     <string name="repo_staged_count">已暂存 %1$d 个</string>
     <string name="repo_commit_title">提交…</string>
     <string name="repo_commit_message">提交说明</string>
@@ -91,12 +89,12 @@
     <string name="repo_commit_message_empty">提交需要一句说明。</string>
     <string name="repo_commit_stage_all">暂存全部 (add -A)</string>
     <string name="repo_stash">储藏改动 (stash)</string>
+    <string name="repo_stash_pop">恢复最新的储藏 (stash pop)</string>
     <string name="repo_stash_ask">当前的改动会收进储藏区，随时可以取回。</string>
     <string name="repo_stash_pop_ask">最新的储藏会回到工作区；若有冲突会停下来。</string>
-    <string name="repo_stash_action">储藏 (stash)</string>
-    <string name="repo_stash_pop">恢复最新的储藏 (stash pop)</string>
     <string name="repo_stashes">储藏列表</string>
     <string name="repo_stashes_action">储藏列表 (stash list)</string>
+    <string name="repo_stash_action">储藏 (stash)</string>
     <string name="repo_stash_empty">还没有储藏。</string>
     <string name="repo_stash_nothing">没有可以储藏的改动。</string>
     <string name="repo_stash_none">没有可以恢复的储藏。</string>
