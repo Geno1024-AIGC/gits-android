@@ -1,5 +1,6 @@
 package com.geno1024.ai.gits.ui.home
 
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.combinedClickable
@@ -17,16 +18,19 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.CreateNewFolder
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.VpnKey
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -37,12 +41,14 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -53,6 +59,7 @@ import com.geno1024.ai.gits.R
 import com.geno1024.ai.gits.data.DocumentTree
 import com.geno1024.ai.gits.data.RecentRepository
 import com.geno1024.ai.gits.ui.CredentialsDialog
+import com.geno1024.ai.gits.ui.repo.inverted
 import java.io.File
 
 /** What the folder picker was opened for, so the answer can be put to that use. */
@@ -71,9 +78,30 @@ fun HomeScreen(
 
     var creating by remember { mutableStateOf(false) }
     var cloning by remember { mutableStateOf(false) }
-    // The entry being taken off the list, while the answer is being thought about.
-    var forgetting by remember { mutableStateOf<RecentRepository?>(null) }
+    // The entries being taken off the list, while the answer is being thought about.
+    var forgetting by remember { mutableStateOf(listOf<RecentRepository>()) }
     var menu by remember { mutableStateOf(false) }
+
+    /**
+     * What the list has picked, by repository path.
+     *
+     * The long press no longer takes an entry off the list by itself: it picks, and
+     * what a pick is for is shown afterwards, so nothing is ever removed by a gesture
+     * that says nothing about where it leads.
+     */
+    var selected by remember { mutableStateOf(setOf<String>()) }
+
+    // A selection belongs to this list, so an entry that went away stops counting.
+    LaunchedEffect(state.repositories) {
+        val paths = state.repositories.mapTo(mutableSetOf()) { it.path }
+        selected = selected.intersect(paths)
+    }
+
+    val picking = selected.isNotEmpty()
+
+    fun toggle(path: String) {
+        selected = if (path in selected) selected - path else selected + path
+    }
 
     /**
      * The folder a new repository would be made inside, when one was picked.
@@ -115,57 +143,112 @@ fun HomeScreen(
         pickFolder.launch(DocumentTree.initialUri())
     }
 
+    fun selectAll() {
+        selected = state.repositories.mapTo(mutableSetOf()) { it.path }
+    }
+
+    fun invertSelection() {
+        selected = inverted(selected, state.repositories.map { it.path })
+    }
+
+    // A selection is a state to finish rather than a screen to leave, so the back
+    // key unticks it instead of walking out from under a half-made choice.
+    BackHandler(enabled = picking) { selected = emptySet() }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.app_name)) },
                 actions = {
-                    IconButton(onClick = onOpenSettings) {
-                        Icon(
-                            Icons.Default.Settings,
-                            contentDescription = stringResource(R.string.settings_title),
-                        )
-                    }
-                    IconButton(onClick = onManageKeys) {
-                        Icon(
-                            Icons.Default.VpnKey,
-                            contentDescription = stringResource(R.string.keys_title),
-                        )
-                    }
-                    IconButton(onClick = { pick(FolderWant.OPEN) }) {
-                        Icon(
-                            Icons.Default.FolderOpen,
-                            contentDescription = stringResource(R.string.action_open_repository),
-                        )
+                    // What a selection is for takes the corner over the way it does in
+                    // the repository list: the settings, the keys and the folder picker
+                    // wait until the choice is made.
+                    if (picking) {
+                        TextButton(onClick = { selectAll() }) {
+                            Text(stringResource(R.string.selection_all))
+                        }
+                        TextButton(onClick = { selected = emptySet() }) {
+                            Text(stringResource(R.string.selection_none))
+                        }
+                        TextButton(onClick = { invertSelection() }) {
+                            Text(stringResource(R.string.selection_invert))
+                        }
+                    } else {
+                        IconButton(onClick = onOpenSettings) {
+                            Icon(
+                                Icons.Default.Settings,
+                                contentDescription = stringResource(R.string.settings_title),
+                            )
+                        }
+                        IconButton(onClick = onManageKeys) {
+                            Icon(
+                                Icons.Default.VpnKey,
+                                contentDescription = stringResource(R.string.keys_title),
+                            )
+                        }
+                        IconButton(onClick = { pick(FolderWant.OPEN) }) {
+                            Icon(
+                                Icons.Default.FolderOpen,
+                                contentDescription = stringResource(R.string.action_open_repository),
+                            )
+                        }
                     }
                 },
             )
         },
         floatingActionButton = {
-            Box {
-                FloatingActionButton(onClick = { menu = true }) {
-                    Icon(
-                        Icons.Default.Add,
-                        contentDescription = stringResource(R.string.action_new),
+            if (picking) {
+                // The corner belongs to the selection while there is one: the way off
+                // the list sits where the choice can still be looked at first, and one
+                // repository picked is a repository that can be opened straight away.
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    if (selected.size == 1) {
+                        ActionButton(
+                            icon = Icons.Default.FolderOpen,
+                            label = stringResource(R.string.action_open_repository),
+                            onClick = {
+                                val only = state.repositories.firstOrNull { it.path in selected }
+                                    ?: return@ActionButton
+                                selected = emptySet()
+                                viewModel.open(only.path, onOpen)
+                            },
+                        )
+                    }
+                    ActionButton(
+                        icon = Icons.Default.Delete,
+                        label = stringResource(R.string.action_forget),
+                        onClick = { forgetting = state.repositories.filter { it.path in selected } },
                     )
                 }
-                DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.create_repository_action)) },
-                        leadingIcon = { Icon(Icons.Default.CreateNewFolder, contentDescription = null) },
-                        onClick = {
-                            menu = false
-                            creating = true
-                        },
-                    )
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.action_clone_repository)) },
-                        leadingIcon = { Icon(Icons.Default.CloudDownload, contentDescription = null) },
-                        onClick = {
-                            menu = false
-                            cloning = true
-                        },
-                    )
+            } else {
+                Box {
+                    FloatingActionButton(onClick = { menu = true }) {
+                        Icon(
+                            Icons.Default.Add,
+                            contentDescription = stringResource(R.string.action_new),
+                        )
+                    }
+                    DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.create_repository_action)) },
+                            leadingIcon = { Icon(Icons.Default.CreateNewFolder, contentDescription = null) },
+                            onClick = {
+                                menu = false
+                                creating = true
+                            },
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.action_clone_repository)) },
+                            leadingIcon = { Icon(Icons.Default.CloudDownload, contentDescription = null) },
+                            onClick = {
+                                menu = false
+                                cloning = true
+                            },
+                        )
+                    }
                 }
             }
         },
@@ -189,8 +272,10 @@ fun HomeScreen(
                     items(state.repositories, key = { it.path }) { repository ->
                         RepositoryRow(
                             repository = repository,
+                            picking = picking,
+                            picked = repository.path in selected,
                             onOpen = { viewModel.open(repository.path, onOpen) },
-                            onForget = { forgetting = repository },
+                            onToggle = { toggle(repository.path) },
                         )
                     }
                 }
@@ -202,19 +287,29 @@ fun HomeScreen(
         }
     }
 
-    forgetting?.let { repository ->
+    if (forgetting.isNotEmpty()) {
         AlertDialog(
-            onDismissRequest = { forgetting = null },
-            title = { Text(repository.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+            onDismissRequest = { forgetting = emptyList() },
+            title = {
+                Text(
+                    text = forgetting.joinToString { it.name },
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            },
             text = { Text(stringResource(R.string.home_forget_note)) },
             confirmButton = {
                 TextButton(onClick = {
-                    forgetting = null
-                    viewModel.forget(repository)
+                    val taken = forgetting
+                    forgetting = emptyList()
+                    selected = emptySet()
+                    taken.forEach(viewModel::forget)
                 }) { Text(stringResource(R.string.action_forget)) }
             },
             dismissButton = {
-                TextButton(onClick = { forgetting = null }) { Text(stringResource(R.string.action_cancel)) }
+                TextButton(onClick = { forgetting = emptyList() }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
             },
         )
     }
@@ -262,19 +357,22 @@ fun HomeScreen(
 @Composable
 private fun RepositoryRow(
     repository: RecentRepository,
+    picking: Boolean,
+    picked: Boolean,
     onOpen: () -> Unit,
-    onForget: () -> Unit,
+    onToggle: () -> Unit,
 ) {
-    // The way off the list is a long press rather than a cross sitting on the row:
-    // a list of things to open is not a list of things a thumb should be able to hit
-    // by mistake, and the answer is asked for afterwards rather than taken at once.
+    // The long press picks rather than takes away: a gesture that removes an entry is
+    // one nobody can see coming, so what a pick is for is shown afterwards, in the
+    // corner for the one and along the top for the set. Once a selection is under way
+    // the tap joins it instead of opening, because opening would leave the selection
+    // behind rather than add to it.
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .combinedClickable(
-                onLongClickLabel = stringResource(R.string.action_forget),
-                onClick = onOpen,
-                onLongClick = onForget,
+                onClick = { if (picking) onToggle() else onOpen() },
+                onLongClick = onToggle,
             ),
     ) {
         Row(
@@ -282,7 +380,13 @@ private fun RepositoryRow(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Icon(Icons.Default.Folder, contentDescription = null)
+            // The folder becomes a box while there is something to tick: one says
+            // "open me", the other says "picked", and a row shows only one of them.
+            if (picking) {
+                Checkbox(checked = picked, onCheckedChange = { onToggle() })
+            } else {
+                Icon(Icons.Default.Folder, contentDescription = null)
+            }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = repository.name,
@@ -481,6 +585,16 @@ private fun ParentField(parent: File?, onPickParent: () -> Unit) {
             overflow = TextOverflow.Ellipsis,
         )
     }
+}
+
+/** One labelled button in the corner. The label is the point, so it is not hidden from a screen reader. */
+@Composable
+private fun ActionButton(icon: ImageVector, label: String, onClick: () -> Unit) {
+    ExtendedFloatingActionButton(
+        onClick = onClick,
+        icon = { Icon(icon, contentDescription = null) },
+        text = { Text(label) },
+    )
 }
 
 /** Names where the repository will actually go, before the button is pressed. */

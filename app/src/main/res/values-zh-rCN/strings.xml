@@ -83,9 +83,9 @@
     <string name="repo_changes_none">没有任何改动。</string>
     <string name="repo_stage">暂存 (add)</string>
     <string name="repo_unstage" tools:ignore="TypographyDashes">取消暂存 (restore --staged)</string>
-    <string name="repo_select_all">全选</string>
-    <string name="repo_select_none">取消全选</string>
-    <string name="repo_select_invert">反选</string>
+    <string name="selection_all">全选</string>
+    <string name="selection_none">取消全选</string>
+    <string name="selection_invert">反选</string>
     <string name="repo_staged_count">已暂存 %1$d 个</string>
     <string name="repo_commit_title">提交…</string>
     <string name="repo_commit_message">提交说明</string>

@@ -625,13 +625,13 @@ private fun ActionButton(icon: ImageVector, label: String, onClick: () -> Unit) 
 @Composable
 private fun SelectionActions(state: RepoUiState, viewModel: RepoViewModel) {
     TextButton(onClick = viewModel::selectAll) {
-        Text(stringResource(R.string.repo_select_all))
+        Text(stringResource(R.string.selection_all))
     }
     TextButton(onClick = viewModel::clearSelection) {
-        Text(stringResource(R.string.repo_select_none))
+        Text(stringResource(R.string.selection_none))
     }
     TextButton(onClick = viewModel::invertSelection) {
-        Text(stringResource(R.string.repo_select_invert))
+        Text(stringResource(R.string.selection_invert))
     }
 }
 
