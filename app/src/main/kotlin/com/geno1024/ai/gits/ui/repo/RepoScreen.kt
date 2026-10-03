@@ -204,7 +204,7 @@ fun RepoScreen(path: String, onBack: () -> Unit, onOpenSettings: () -> Unit) {
                 state.loading -> CircularProgressIndicator(Modifier.align(Alignment.Center))
                 else -> when (state.tab) {
                     RepoTab.WORKING_TREE -> WorkingTreePane(state, viewModel)
-                    RepoTab.HISTORY -> HistoryPane(state)
+                    RepoTab.HISTORY -> HistoryPane(state, viewModel)
                     RepoTab.BRANCHES -> BranchesPane(state, viewModel)
                     RepoTab.REMOTES -> RemotesPane(state, viewModel)
                 }
@@ -255,7 +255,11 @@ fun RepoScreen(path: String, onBack: () -> Unit, onOpenSettings: () -> Unit) {
     }
 
     state.viewing?.let { viewing ->
-        FileDialog(viewing = viewing, onDismiss = viewModel::closeFile)
+        TextDialog(title = viewing.path, content = viewing.content, onDismiss = viewModel::closeFile)
+    }
+
+    state.diffing?.let { diff ->
+        TextDialog(title = diff.title, content = diff.content, onDismiss = viewModel::closeDiff)
     }
 
     // The commit that asked for this is still being waited on, so the passphrase ends
@@ -882,14 +886,21 @@ private fun IdentityDialog(
 }
 
 @Composable
-private fun HistoryPane(state: RepoUiState) {
+private fun HistoryPane(state: RepoUiState, viewModel: RepoViewModel) {
     if (state.history.isEmpty()) {
         EmptyNote("This repository has no commits yet.")
         return
     }
     LazyColumn(modifier = Modifier.fillMaxSize()) {
         items(state.history, key = { it.id }) { entry ->
-            Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    // The whole line is the handle: a commit is one thing, and there is
+                    // no part of its row worth tapping separately from the rest.
+                    .clickable { viewModel.openDiff(entry.id, "${entry.shortId.take(7)} · ${entry.subject}") }
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+            ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -1266,7 +1277,7 @@ private fun DeleteDialog(action: EntryAction.Delete, viewModel: RepoViewModel) {
  * the file said so first.
  */
 @Composable
-private fun FileDialog(viewing: Viewing, onDismiss: () -> Unit) {
+private fun TextDialog(title: String, content: String, onDismiss: () -> Unit) {
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false),
@@ -1285,7 +1296,7 @@ private fun FileDialog(viewing: Viewing, onDismiss: () -> Unit) {
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Text(
-                        text = viewing.path,
+                        text = title,
                         modifier = Modifier.weight(1f),
                         style = MaterialTheme.typography.titleSmall,
                         maxLines = 1,
@@ -1306,7 +1317,7 @@ private fun FileDialog(viewing: Viewing, onDismiss: () -> Unit) {
                         .padding(16.dp),
                 ) {
                     Text(
-                        text = viewing.content,
+                        text = content,
                         style = MaterialTheme.typography.bodySmall,
                         fontFamily = FontFamily.Monospace,
                     )

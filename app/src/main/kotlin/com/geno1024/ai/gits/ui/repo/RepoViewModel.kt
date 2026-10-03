@@ -74,6 +74,9 @@ enum class RepoTab(@StringRes val label: Int) {
 /** One file, open for reading. [content] is already refused if it is not text to show. */
 data class Viewing(val path: String, val content: String)
 
+/** One commit's diff, under the line of history it was asked from. */
+data class DiffView(val title: String, val content: String)
+
 /** A rename or a removal waiting on the user's answer. */
 sealed interface EntryAction {
     val path: String
@@ -108,6 +111,8 @@ data class RepoUiState(
     val viewing: Viewing? = null,
     /** The file whose way of being opened is still being asked, if any. */
     val opening: String? = null,
+    /** The commit whose patch is on screen, if any. */
+    val diffing: DiffView? = null,
     /** The entry action waiting on the user, if any. */
     val pending: EntryAction? = null,
     /** The stash list, newest first, as last read. */
@@ -390,6 +395,27 @@ class RepoViewModel(
     }
 
     fun closeFile() = state.update { it.copy(viewing = null) }
+
+    /**
+     * Reads what [id] changed so the line it came from can be opened like a file.
+     *
+     * [title] is that line as it was shown, because the patch itself carries neither
+     * the id nor the subject of the commit it belongs to.
+     */
+    fun openDiff(id: String, title: String) = viewModelScope.launch {
+        state.update { it.copy(busy = true, error = null) }
+        val outcome = withContext(Dispatchers.IO) {
+            // A merge already carrying everything it merges changes nothing, and an
+            // empty reading is a dialog full of nothing to point at.
+            runCatching { require().commitDiff(id).ifBlank { text(R.string.repo_commit_no_changes) } }
+        }
+        state.update { it.copy(busy = false) }
+        outcome
+            .onSuccess { patch -> state.update { it.copy(diffing = DiffView(title, patch)) } }
+            .onFailure { failure -> state.update { it.copy(error = failure.describe("Could not show the commit")) } }
+    }
+
+    fun closeDiff() = state.update { it.copy(diffing = null) }
 
     /** Chooses the folder-by-folder list, or the pile of everything that has changed. */
     fun setOnlyChanged(onlyChanged: Boolean) = state.update {

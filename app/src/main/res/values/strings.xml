@@ -68,6 +68,7 @@
     <string name="repo_open_preview">Preview</string>
     <string name="repo_open_edit">Edit</string>
     <string name="repo_edit_no_app">No app on this device can open it for editing.</string>
+    <string name="repo_commit_no_changes">(this commit changed nothing)</string>
     <string name="repo_files_more">More actions for this entry</string>
     <string name="repo_files_rename">Rename</string>
     <string name="repo_files_rename_label">New name</string>

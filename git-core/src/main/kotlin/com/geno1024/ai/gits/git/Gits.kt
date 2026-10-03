@@ -7,6 +7,7 @@ import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.api.ListBranchCommand
 import org.eclipse.jgit.api.errors.TransportException
 import org.eclipse.jgit.blame.BlameResult
+import org.eclipse.jgit.diff.DiffFormatter
 import org.eclipse.jgit.lib.BranchConfig
 import org.eclipse.jgit.lib.BranchTrackingStatus
 import org.eclipse.jgit.lib.Config
@@ -18,6 +19,8 @@ import org.eclipse.jgit.transport.RefSpec
 import org.eclipse.jgit.transport.RemoteConfig
 import org.eclipse.jgit.transport.URIish
 import org.eclipse.jgit.revwalk.RevCommit
+import org.eclipse.jgit.revwalk.RevWalk
+import java.io.ByteArrayOutputStream
 import java.io.Closeable
 import java.io.File
 
@@ -293,6 +296,34 @@ class Gits private constructor(
                 signatureCheck = verify(commit),
             )
         }
+    }
+
+    /**
+     * What [id] changed, as the patch `git show` would print.
+     *
+     * Read against the first parent, which is how a merge is read when its line is
+     * tapped, and against nothing at all for the very first commit — the whole tree
+     * arriving is the honest answer there. The contents of a binary file never enter
+     * the patch; only the fact that it differs is carried across.
+     *
+     * Refused once the patch is past [MAX_PATCH], because a commit touching a thousand
+     * files is not something to hold in memory before deciding it cannot be shown.
+     */
+    fun commitDiff(id: String): String {
+        val revision = repository.resolve("$id^{commit}")
+            ?: throw IllegalArgumentException("\"$id\" does not name a commit.")
+        val patch = PatchBuffer(MAX_PATCH)
+        RevWalk(repository).use { walk ->
+            val commit = walk.parseCommit(revision)
+            val current = walk.parseTree(commit.tree)
+            val parent = commit.parents.firstOrNull()?.let { walk.parseTree(walk.parseCommit(it).tree) }
+            DiffFormatter(patch).use { formatter ->
+                formatter.setRepository(repository)
+                formatter.setDetectRenames(true)
+                formatter.format(parent, current)
+            }
+        }
+        return patch.toString(Charsets.UTF_8.name())
     }
 
     /**
@@ -625,3 +656,28 @@ class Gits private constructor(
         }
     }
 }
+
+/** A patch buffer that refuses to grow past [limit]. */
+private class PatchBuffer(private val limit: Int) : ByteArrayOutputStream() {
+
+    override fun write(b: Int) {
+        roomFor(1)
+        super.write(b)
+    }
+
+    override fun write(b: ByteArray, off: Int, len: Int) {
+        roomFor(len)
+        super.write(b, off, len)
+    }
+
+    private fun roomFor(by: Int) {
+        if (count + by > limit) {
+            throw IllegalArgumentException(
+                "this patch is more than ${limit / KILOBYTE} KB, which is too much to show at once.",
+            )
+        }
+    }
+}
+
+private const val MAX_PATCH = 512 * 1024
+private const val KILOBYTE = 1024
