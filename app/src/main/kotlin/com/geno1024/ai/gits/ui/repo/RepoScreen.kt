@@ -5,6 +5,8 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -1009,12 +1011,16 @@ private fun BranchesPane(state: RepoUiState, viewModel: RepoViewModel) {
 }
 
 @Composable
+@OptIn(ExperimentalLayoutApi::class)
 private fun RemotesPane(state: RepoUiState, viewModel: RepoViewModel) {
     var adding by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxSize()) {
         if (state.remotes.isEmpty()) {
-            EmptyNote("This repository has no remotes.")
+            // Weighed to whatever the row below leaves. Left to fill, the note claims
+            // the whole pane and the row that adds a remote falls past the bottom of
+            // the screen — which is the one moment it is the thing being looked for.
+            EmptyNote(stringResource(R.string.repo_remote_none), modifier = Modifier.weight(1f))
         } else {
             LazyColumn(modifier = Modifier.weight(1f)) {
                 items(state.remotes, key = { it.name }) { remote ->
@@ -1044,16 +1050,34 @@ private fun RemotesPane(state: RepoUiState, viewModel: RepoViewModel) {
                 }
             }
         }
-        Row(modifier = Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        // Wrapping rather than fitting, and the one needed to start goes first: three
+        // buttons do not share one line of a phone in either language, and a row that
+        // lets the last of them fall off the edge is a button nobody can press.
+        FlowRow(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            OutlinedButton(onClick = { adding = true }) {
+                Text(stringResource(R.string.repo_remote_add_action))
+            }
             OutlinedButton(onClick = viewModel::pull) {
-                Icon(Icons.Default.CloudDownload, contentDescription = null)
-                Text("  Pull")
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Icon(Icons.Default.CloudDownload, contentDescription = null)
+                    Text(stringResource(R.string.repo_remote_pull))
+                }
             }
             OutlinedButton(onClick = viewModel::push) {
-                Icon(Icons.Default.CloudUpload, contentDescription = null)
-                Text("  Push")
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Icon(Icons.Default.CloudUpload, contentDescription = null)
+                    Text(stringResource(R.string.repo_remote_push))
+                }
             }
-            OutlinedButton(onClick = { adding = true }) { Text("Add remote") }
         }
     }
 
@@ -1062,20 +1086,22 @@ private fun RemotesPane(state: RepoUiState, viewModel: RepoViewModel) {
         var uri by remember { mutableStateOf("") }
         AlertDialog(
             onDismissRequest = { adding = false },
-            title = { Text("Add remote") },
+            title = { Text(stringResource(R.string.repo_remote_add)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
                         value = name,
                         onValueChange = { name = it },
-                        label = { Text("Name") },
+                        label = { Text(stringResource(R.string.repo_files_name)) },
                         singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
                     )
                     OutlinedTextField(
                         value = uri,
                         onValueChange = { uri = it },
-                        label = { Text("URL") },
+                        label = { Text(stringResource(R.string.repo_remote_url)) },
                         singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
                     )
                 }
             },

@@ -108,6 +108,12 @@
     <string name="repo_stash_dropped">Dropped.</string>
     <string name="repo_stash_restore">Restore (stash pop)</string>
     <string name="repo_stash_drop">Drop this stash</string>
+    <string name="repo_remote_none">This repository has no remotes.</string>
+    <string name="repo_remote_add">Add remote</string>
+    <string name="repo_remote_add_action">Add remote (remote add)</string>
+    <string name="repo_remote_pull">Pull (pull)</string>
+    <string name="repo_remote_push">Push (push)</string>
+    <string name="repo_remote_url">URL</string>
     <string name="action_check_update">Check for updates</string>
     <string name="keys_can_sign">can sign</string>
     <string name="keys_no_passphrase">no passphrase</string>

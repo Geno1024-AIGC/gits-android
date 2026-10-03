@@ -108,6 +108,12 @@
     <string name="repo_stash_dropped">已丢弃。</string>
     <string name="repo_stash_restore">恢复 (stash pop)</string>
     <string name="repo_stash_drop">丢弃此储藏</string>
+    <string name="repo_remote_none">此仓库还没有远程。</string>
+    <string name="repo_remote_add">添加远程</string>
+    <string name="repo_remote_add_action">添加远程 (remote add)</string>
+    <string name="repo_remote_pull">拉取 (pull)</string>
+    <string name="repo_remote_push">推送 (push)</string>
+    <string name="repo_remote_url">地址</string>
     <string name="action_check_update">检查更新</string>
     <string name="keys_signs_with">使用此密钥签名提交</string>
     <string name="keys_can_sign">可签名</string>
