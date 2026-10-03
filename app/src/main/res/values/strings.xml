@@ -77,6 +77,9 @@
     <string name="repo_actions">Repository actions</string>
     <string name="repo_stage">Stage (add)</string>
     <string name="repo_unstage" tools:ignore="TypographyDashes">Unstage (restore --staged)</string>
+    <string name="repo_select_all">All</string>
+    <string name="repo_select_none">None</string>
+    <string name="repo_select_invert">Invert</string>
     <string name="repo_all">All</string>
     <string name="repo_staged_count">%1$d staged</string>
     <string name="repo_commit_title">Commit…</string>

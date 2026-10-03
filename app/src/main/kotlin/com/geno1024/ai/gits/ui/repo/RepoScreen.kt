@@ -1,6 +1,7 @@
 package com.geno1024.ai.gits.ui.repo
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,6 +30,7 @@ import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
@@ -36,6 +38,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -61,6 +64,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
@@ -126,7 +130,12 @@ fun RepoScreen(path: String, onBack: () -> Unit, onOpenSettings: () -> Unit) {
                         )
                     }
                 },
+                // A selection is a state to finish rather than a screen to leave, so it
+                // takes the corner over: the remote can wait until the choice is made.
                 actions = {
+                    if (state.selected.isNotEmpty()) {
+                        SelectionActions(state = state, viewModel = viewModel)
+                    } else {
                     IconButton(onClick = viewModel::refresh) {
                         Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.action_refresh))
                     }
@@ -147,6 +156,7 @@ fun RepoScreen(path: String, onBack: () -> Unit, onOpenSettings: () -> Unit) {
                             Icons.Default.Settings,
                             contentDescription = stringResource(R.string.settings_title),
                         )
+                    }
                     }
                 },
             )
@@ -169,12 +179,18 @@ fun RepoScreen(path: String, onBack: () -> Unit, onOpenSettings: () -> Unit) {
         // is worse than one that is only ever where it belongs.
         floatingActionButton = {
             if (state.tab == RepoTab.WORKING_TREE) {
-                RepoActions(
-                    onCommit = { committing = true },
-                    onStash = viewModel::stash,
-                    onStashPop = viewModel::stashPop,
-                    onStashes = viewModel::openStashes,
-                )
+                // A selection swaps the corner for what a selection is for, and swaps
+                // back the moment the last box is unticked.
+                if (state.selected.isEmpty()) {
+                    RepoActions(
+                        onCommit = { committing = true },
+                        onStash = viewModel::stash,
+                        onStashPop = viewModel::stashPop,
+                        onStashes = viewModel::openStashes,
+                    )
+                } else {
+                    StageActions(state = state, viewModel = viewModel)
+                }
             }
         },
     ) { padding ->
@@ -334,11 +350,16 @@ private fun WorkingTreePane(state: RepoUiState, viewModel: RepoViewModel) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { viewModel.openEntry(entry) }
+                            .combinedClickable(
+                                onClick = { viewModel.openEntry(entry) },
+                                onLongClick = { viewModel.toggleSelected(entry.path) },
+                            )
                             .padding(vertical = 2.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        if (change == null) {
+                        // A box appears once there is something to tick: a changed file
+                        // from the start, or any row the long press has picked.
+                        if (change == null && entry.path !in state.selected) {
                             // The gap where a checkbox would sit, so that a folder and a
                             // file name the same place instead of dancing sideways.
                             Spacer(modifier = Modifier.size(48.dp))
@@ -442,6 +463,69 @@ private fun RepoActions(
                 },
             )
         }
+    }
+}
+
+/**
+ * The stage buttons, which are what a selection is for.
+ *
+ * Which of them shows is read off the selection itself: files waiting to be staged ask
+ * for the first, already staged files ask for the other, and a selection holding both
+ * asks for both. With nothing selected the corner keeps its menu.
+ */
+@Composable
+private fun StageActions(state: RepoUiState, viewModel: RepoViewModel) {
+    val staged = state.staged.mapTo(mutableSetOf()) { it.path }
+    val waiting = state.selected.any { it !in staged }
+    val already = state.selected.any { it in staged }
+    Column(
+        horizontalAlignment = Alignment.End,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        if (waiting) {
+            ActionButton(
+                icon = Icons.Default.Add,
+                label = stringResource(R.string.repo_stage),
+                onClick = viewModel::stageSelected,
+            )
+        }
+        if (already) {
+            ActionButton(
+                icon = Icons.Default.Remove,
+                label = stringResource(R.string.repo_unstage),
+                onClick = viewModel::unstageSelected,
+            )
+        }
+    }
+}
+
+/** One labelled button in the corner. The label is the point, so it is not hidden from a screen reader. */
+@Composable
+private fun ActionButton(icon: ImageVector, label: String, onClick: () -> Unit) {
+    ExtendedFloatingActionButton(
+        onClick = onClick,
+        icon = { Icon(icon, contentDescription = null) },
+        text = { Text(label) },
+    )
+}
+
+/**
+ * What a selection is asked for, in place of the buttons that talk to a remote.
+ *
+ * A selection is a state to finish, not a screen to leave: the refresh and the two
+ * transfers are hidden until the last box is unticked, so a pull cannot start under a
+ * half-made choice.
+ */
+@Composable
+private fun SelectionActions(state: RepoUiState, viewModel: RepoViewModel) {
+    TextButton(onClick = viewModel::selectAll) {
+        Text(stringResource(R.string.repo_select_all))
+    }
+    TextButton(onClick = viewModel::clearSelection) {
+        Text(stringResource(R.string.repo_select_none))
+    }
+    TextButton(onClick = viewModel::invertSelection) {
+        Text(stringResource(R.string.repo_select_invert))
     }
 }
 
@@ -976,7 +1060,10 @@ private fun ChangeRow(
     onDelete: () -> Unit,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onOpen).padding(vertical = 2.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .combinedClickable(onClick = onOpen, onLongClick = onToggle)
+            .padding(vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Checkbox(checked = selected, onCheckedChange = { onToggle() })

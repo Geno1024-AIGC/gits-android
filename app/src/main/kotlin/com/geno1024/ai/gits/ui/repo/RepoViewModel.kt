@@ -184,6 +184,9 @@ class RepoViewModel(
     private fun require(): Gits = gits ?: error("The repository is not open.")
 
     fun selectTab(tab: RepoTab) {
+        // A selection belongs to the list it was made in, and the other panes would
+        // happily act on paths they do not show.
+        clearSelection()
         state.update { it.copy(tab = tab) }
         // The working tree is the pane people come back to, so it is re-read on arrival
         // like any other pane rather than shown as whatever it last happened to be.
@@ -257,12 +260,14 @@ class RepoViewModel(
 
     /** Shows [directory], which is named from the repository root. */
     fun enter(directory: String) {
+        clearSelection()
         state.update { it.copy(directory = directory) }
         readFiles()
     }
 
     /** Moves up one folder, and stays put at the root where there is nothing above. */
     fun upDirectory() {
+        clearSelection()
         val parent = state.value.directory.substringBeforeLast('/', "").trimEnd('/')
         state.update { it.copy(directory = parent) }
         readFiles()
@@ -327,7 +332,11 @@ class RepoViewModel(
     fun closeFile() = state.update { it.copy(viewing = null) }
 
     /** Chooses the folder-by-folder list, or the pile of everything that has changed. */
-    fun setOnlyChanged(onlyChanged: Boolean) = state.update { it.copy(onlyChanged = onlyChanged) }
+    fun setOnlyChanged(onlyChanged: Boolean) = state.update {
+        // The two lists hold different paths, so a selection made in one would select
+        // nothing at all in the other.
+        it.copy(onlyChanged = onlyChanged, selected = emptySet())
+    }
 
     /**
      * Asks for [name] as the new name of [path], which stays in its own folder.
@@ -476,7 +485,23 @@ class RepoViewModel(
         it.copy(selected = if (path in it.selected) it.selected - path else it.selected + path)
     }
 
-    fun selectAll() = state.update { it.copy(selected = it.changes.mapTo(mutableSetOf()) { c -> c.path }) }
+    /**
+     * Selects everything the list is showing, which is a different set in the flat
+     * list of changes than in the folder by folder one.
+     */
+    fun selectAll() = state.update {
+        it.copy(selected = selectable(it.onlyChanged, it.changes, it.files).toSet())
+    }
+
+    /**
+     * Turns over what is on show, leaving anything selected elsewhere as it was.
+     *
+     * Inverting the whole repository instead would select paths the list never showed,
+     * and the buttons that follow would act on files nobody has looked at.
+     */
+    fun invertSelection() = state.update {
+        it.copy(selected = inverted(it.selected, selectable(it.onlyChanged, it.changes, it.files)))
+    }
 
     fun clearSelection() = state.update { it.copy(selected = emptySet()) }
 
@@ -708,6 +733,14 @@ class RepoViewModel(
 /** Git's own wording when it has one, which is usually the most useful part. */
 private fun Throwable.describe(prefix: String): String =
     message?.takeIf { it.isNotBlank() }?.let { "$prefix: $it" } ?: prefix
+
+/** What a select-all or an invert has to work on: the list as it is being shown. */
+internal fun selectable(onlyChanged: Boolean, changes: List<WorkingChange>, files: List<WorkingEntry>): List<String> =
+    if (onlyChanged) changes.map { it.path } else files.map { it.path }
+
+/** [selected], with everything on show turned over and everything off show left alone. */
+internal fun inverted(selected: Set<String>, visible: List<String>): Set<String> =
+    (selected - visible.toSet()) + visible.filterNot { it in selected }
 
 /**
  * The locked key inside this failure, however many wrappers JGit put around it.
