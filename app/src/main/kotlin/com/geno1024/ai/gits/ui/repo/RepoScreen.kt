@@ -51,6 +51,9 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
@@ -261,7 +264,14 @@ fun RepoScreen(path: String, onBack: () -> Unit, onOpenSettings: () -> Unit) {
     }
 
     state.diffing?.let { diff ->
-        TextDialog(title = diff.title, content = diff.content, onDismiss = viewModel::closeDiff)
+        TextDialog(
+            title = diff.title,
+            content = diff.content,
+            // Parsed once per commit: the choice below is between two ways of showing
+            // the same lines, not between two readings of them.
+            patch = remember(diff.content) { parsePatch(diff.content) },
+            onDismiss = viewModel::closeDiff,
+        )
     }
 
     // The commit that asked for this is still being waited on, so the passphrase ends
@@ -1297,13 +1307,20 @@ private fun DeleteDialog(action: EntryAction.Delete, viewModel: RepoViewModel) {
 }
 
 /**
- * One file, read whole, shown as it is.
+ * A screen of text to read: a file, or the patch behind a line of history.
  *
- * Selectable because a line of a stack trace is worth copying, and monospaced because
- * the file said so first.
+ * [patch] is passed when the same text has a drawn form as well as the raw one, and
+ * then the two are a choice made here rather than a second dialog: the lines are the
+ * same lines either way, and only their presentation is being decided.
  */
 @Composable
-private fun TextDialog(title: String, content: String, onDismiss: () -> Unit) {
+private fun TextDialog(
+    title: String,
+    content: String,
+    onDismiss: () -> Unit,
+    patch: List<DiffLine>? = null,
+) {
+    var raw by remember(patch) { mutableStateOf(false) }
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false),
@@ -1335,18 +1352,38 @@ private fun TextDialog(title: String, content: String, onDismiss: () -> Unit) {
                         )
                     }
                 }
+                if (patch != null) {
+                    SingleChoiceSegmentedButtonRow(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
+                    ) {
+                        SegmentedButton(
+                            selected = !raw,
+                            onClick = { raw = false },
+                            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
+                        ) { Text(stringResource(R.string.repo_diff_rendered)) }
+                        SegmentedButton(
+                            selected = raw,
+                            onClick = { raw = true },
+                            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
+                        ) { Text(stringResource(R.string.repo_diff_raw)) }
+                    }
+                }
                 HorizontalDivider()
-                SelectionContainer(
-                    modifier = Modifier
-                        .weight(1f)
-                        .verticalScroll(rememberScrollState())
-                        .padding(16.dp),
-                ) {
-                    Text(
-                        text = content,
-                        style = MaterialTheme.typography.bodySmall,
-                        fontFamily = FontFamily.Monospace,
-                    )
+                if (patch != null && !raw) {
+                    RenderedPatch(patch, modifier = Modifier.weight(1f))
+                } else {
+                    SelectionContainer(
+                        modifier = Modifier
+                            .weight(1f)
+                            .verticalScroll(rememberScrollState())
+                            .padding(16.dp),
+                    ) {
+                        Text(
+                            text = content,
+                            style = MaterialTheme.typography.bodySmall,
+                            fontFamily = FontFamily.Monospace,
+                        )
+                    }
                 }
             }
         }
