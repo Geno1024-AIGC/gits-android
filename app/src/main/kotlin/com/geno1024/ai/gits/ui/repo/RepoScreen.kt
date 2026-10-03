@@ -231,6 +231,29 @@ fun RepoScreen(path: String, onBack: () -> Unit, onOpenSettings: () -> Unit) {
         )
     }
 
+    // A tap on a file may mean either of two things, and only the person tapping knows
+    // which, so the question is asked here rather than guessed at from the file's name.
+    state.opening?.let { target ->
+        AlertDialog(
+            onDismissRequest = viewModel::cancelOpen,
+            title = { Text(target.substringAfterLast('/'), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(stringResource(R.string.repo_open_note))
+                    TextButton(onClick = { viewModel.preview(target) }) {
+                        Text(stringResource(R.string.repo_open_preview))
+                    }
+                    TextButton(onClick = { viewModel.editElsewhere(target) }) {
+                        Text(stringResource(R.string.repo_open_edit))
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = viewModel::cancelOpen) { Text(stringResource(R.string.action_cancel)) }
+            },
+        )
+    }
+
     state.viewing?.let { viewing ->
         FileDialog(viewing = viewing, onDismiss = viewModel::closeFile)
     }
@@ -414,7 +437,7 @@ private fun WorkingTreePane(state: RepoUiState, viewModel: RepoViewModel) {
                         selected = change.path in state.selected,
                         picking = state.selected.isNotEmpty(),
                         onToggle = { viewModel.toggleSelected(change.path) },
-                        onOpen = { viewModel.view(change.path) },
+                        onOpen = { viewModel.requestOpen(change.path) },
                         onRename = {
                             viewModel.requestRename(change.path, change.path.substringAfterLast('/'))
                         },

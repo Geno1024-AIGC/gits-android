@@ -64,6 +64,10 @@
     <string name="repo_files_name">Name</string>
     <string name="repo_files_new_file">New file</string>
     <string name="repo_files_new_folder">New folder</string>
+    <string name="repo_open_note">Read it with the built-in reader, or hand it to an editor.</string>
+    <string name="repo_open_preview">Preview</string>
+    <string name="repo_open_edit">Edit</string>
+    <string name="repo_edit_no_app">No app on this device can open it for editing.</string>
     <string name="repo_files_more">More actions for this entry</string>
     <string name="repo_files_rename">Rename</string>
     <string name="repo_files_rename_label">New name</string>

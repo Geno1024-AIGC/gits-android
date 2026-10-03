@@ -64,6 +64,10 @@
     <string name="repo_files_name">名称</string>
     <string name="repo_files_new_file">新建文件</string>
     <string name="repo_files_new_folder">新建文件夹</string>
+    <string name="repo_open_note">用内置阅读器查看，或交给其他应用编辑。</string>
+    <string name="repo_open_preview">预览</string>
+    <string name="repo_open_edit">编辑</string>
+    <string name="repo_edit_no_app">本机没有可以编辑此文件的应用。</string>
     <string name="repo_files_more">此条目的更多操作</string>
     <string name="repo_files_rename">重命名</string>
     <string name="repo_files_rename_label">新名称</string>

@@ -2,4 +2,9 @@
 <paths>
     <cache-path name="cache" path="." />
     <files-path name="files" path="." />
+    <!-- A repository may be made anywhere the device allows one: this app's own
+         external folder, a folder picked off the primary storage, or a card. The
+         address is handed out one file at a time, and nothing outside this app may
+         reach a file without one being handed to it. -->
+    <root-path name="root" path="/" />
 </paths>

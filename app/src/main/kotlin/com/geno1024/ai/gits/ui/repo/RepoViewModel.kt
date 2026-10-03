@@ -1,7 +1,11 @@
 package com.geno1024.ai.gits.ui.repo
 
 import android.app.Application
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.webkit.MimeTypeMap
 import androidx.annotation.StringRes
+import androidx.core.content.FileProvider
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.geno1024.ai.gits.R
@@ -102,6 +106,8 @@ data class RepoUiState(
     val onlyChanged: Boolean = false,
     /** The file open for reading, if any. */
     val viewing: Viewing? = null,
+    /** The file whose way of being opened is still being asked, if any. */
+    val opening: String? = null,
     /** The entry action waiting on the user, if any. */
     val pending: EntryAction? = null,
     /** The stash list, newest first, as last read. */
@@ -306,9 +312,63 @@ class RepoViewModel(
             .onFailure { failure -> state.update { it.copy(error = failure.describe("Could not list")) } }
     }
 
-    /** Follows a tap: into a folder, or open a file so it can be read. */
+    /** Follows a tap: into a folder, or asking how a file should be opened. */
     fun openEntry(entry: WorkingEntry) {
-        if (entry.directory) enter(entry.path) else view(entry.path)
+        if (entry.directory) enter(entry.path) else requestOpen(entry.path)
+    }
+
+    /**
+     * Puts [target] up as the question it is: read it here, or hand it to an editor
+     * outside this app.
+     *
+     * Both lists ask it, because a change list holds the same files as the other one
+     * and a tap there means the same thing.
+     */
+    fun requestOpen(target: String) = state.update { it.copy(opening = target) }
+
+    fun cancelOpen() = state.update { it.copy(opening = null) }
+
+    /** Answers the question with the reader built in, and puts the question away. */
+    fun preview(target: String) {
+        state.update { it.copy(opening = null) }
+        view(target)
+    }
+
+    /**
+     * Answers it with an editor on the device, whichever one is chosen.
+     *
+     * The file gets a `content://` address rather than its own: a `file://` one is
+     * refused outright on every release this app supports, and the address is the only
+     * thing another app may be handed. The write grant goes with it, so what the editor
+     * saves is what Git finds on the next read.
+     */
+    fun editElsewhere(target: String) {
+        state.update { it.copy(opening = null) }
+        val application = getApplication<Application>()
+        val file = File(path, target)
+        val type = MimeTypeMap.getSingleton()
+            .getMimeTypeFromExtension(file.extension.lowercase())
+            ?: "application/octet-stream"
+        val intent = Intent(Intent.ACTION_EDIT).apply {
+            setDataAndType(
+                FileProvider.getUriForFile(application, "${application.packageName}.fileprovider", file),
+                type,
+            )
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+        }
+        runCatching {
+            application.startActivity(Intent.createChooser(intent, null).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        }.onFailure { failure ->
+            state.update {
+                it.copy(
+                    error = if (failure is ActivityNotFoundException) {
+                        text(R.string.repo_edit_no_app)
+                    } else {
+                        failure.describe("Could not open")
+                    },
+                )
+            }
+        }
     }
 
     /**
