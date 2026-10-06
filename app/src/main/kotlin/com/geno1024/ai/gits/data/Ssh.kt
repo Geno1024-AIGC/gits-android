@@ -13,6 +13,7 @@ import org.apache.sshd.common.config.keys.loader.pem.PKCS8PEMResourceKeyPairPars
 import org.apache.sshd.common.config.keys.loader.pem.RSAPEMResourceKeyPairParser
 import org.apache.sshd.common.digest.BuiltinDigests
 import org.apache.sshd.common.util.io.resource.PathResource
+import org.apache.sshd.common.util.security.SecurityUtils
 import org.eclipse.jgit.transport.SshSessionFactory
 import org.eclipse.jgit.transport.sshd.SshdSessionFactory
 import java.io.File
@@ -37,8 +38,16 @@ object Ssh {
      * The session factory is JVM-wide, so this runs once at start-up. What is left at
      * its defaults is deliberate: an unknown host key is asked about rather than taken
      * or refused, and the keys already in [directory] are the ones tried.
+     *
+     * One default is overridden here. Android ships a BouncyCastle that claims RSA in
+     * its table and then refuses to provide it — a change from Android P — and sshd
+     * prefers any registrar it finds over the platform's own providers, so every key
+     * read would fail. Declining to register that provider sends the algorithms back
+     * to the platform, which provides them. This has to be said before sshd registers
+     * anything, and start-up is early enough; said later, it would be too late.
      */
     fun install(context: Context) {
+        SecurityUtils.setAPrioriDisabledProvider(SecurityUtils.BOUNCY_CASTLE, true)
         directory(context).mkdirs()
         SshSessionFactory.setInstance(
             SshdSessionFactory().apply {
