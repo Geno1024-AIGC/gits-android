@@ -59,6 +59,7 @@ import com.geno1024.ai.gits.R
 import com.geno1024.ai.gits.data.DocumentTree
 import com.geno1024.ai.gits.data.RecentRepository
 import com.geno1024.ai.gits.ui.CredentialsDialog
+import com.geno1024.ai.gits.ui.PromptDialog
 import com.geno1024.ai.gits.ui.repo.inverted
 import java.io.File
 
@@ -74,6 +75,7 @@ fun HomeScreen(
     viewModel: HomeViewModel = viewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val prompt by viewModel.questions.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     var creating by remember { mutableStateOf(false) }
@@ -351,6 +353,10 @@ fun HomeScreen(
             onDismiss = viewModel::cancelCredentials,
             onConfirm = viewModel::provideCredentials,
         )
+    }
+
+    prompt?.let { asking ->
+        PromptDialog(prompt = asking, onAnswer = asking::answer)
     }
 }
 

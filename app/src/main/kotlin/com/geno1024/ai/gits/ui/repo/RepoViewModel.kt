@@ -15,6 +15,8 @@ import com.geno1024.ai.gits.data.CredentialStore
 import com.geno1024.ai.gits.data.IdentityStore
 import com.geno1024.ai.gits.data.KeyLocked
 import com.geno1024.ai.gits.data.KeyStore
+import com.geno1024.ai.gits.data.PromptSession
+import com.geno1024.ai.gits.data.Prompting
 import com.geno1024.ai.gits.data.WorkingEntry
 import com.geno1024.ai.gits.data.WorkingTree
 import com.geno1024.ai.gits.git.Gits
@@ -24,6 +26,7 @@ import com.geno1024.ai.gits.git.PushRefResult
 import com.geno1024.ai.gits.git.RemoteInfo
 import com.geno1024.ai.gits.git.StashEntry
 import com.geno1024.ai.gits.git.WorkingChange
+import com.geno1024.ai.gits.git.isSshAddress
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -173,11 +176,17 @@ class RepoViewModel(
     private val keyStore = KeyStore.getInstance(application)
     private val credentials = CredentialStore.getInstance(application)
 
+    /** What a running transfer puts to the screen: a host key to trust, a passphrase. */
+    private val prompts = PromptSession()
+
+    /** The question the transfer is waiting on, if any, for the screen to show. */
+    val questions: StateFlow<Prompting?> = prompts.questions
+
     init {
         viewModelScope.launch {
             val opened = withContext(Dispatchers.IO) {
                 runCatching {
-                    Gits.open(File(path), keyStore.signer(), credentials.asSource())
+                    Gits.open(File(path), keyStore.signer(), credentials.asSource(prompts.questioner))
                         // Commits made by other people are checked against every key
                         // held, not the one chosen for signing.
                         .useVerificationKeys(keyStore.verificationKeys())
@@ -716,8 +725,12 @@ class RepoViewModel(
         block: (Gits) -> Unit,
     ) = viewModelScope.launch {
         val remote = "origin"
-        val host = withContext(Dispatchers.IO) { hostOf(remote) }
-        if (host != null && !credentials.has(host)) {
+        val address = withContext(Dispatchers.IO) { addressOf(remote) }
+        val host = address?.hosts?.firstOrNull()
+        // An SSH exchange has no secret to name beforehand: what it wants — a host key
+        // trusted, a private key's passphrase — only turns up once it is under way.
+        val overSsh = address?.uris?.any { it.isSshAddress() } == true
+        if (host != null && !credentials.has(host) && !overSsh) {
             state.update {
                 it.copy(awaitingCredentials = CredentialRequest(remote, host, transfer))
             }
@@ -752,8 +765,9 @@ class RepoViewModel(
 
     fun cancelCredentials() = state.update { it.copy(awaitingCredentials = null) }
 
-    private fun hostOf(remote: String): String? =
-        gits?.remotes()?.firstOrNull { it.name == remote }?.hosts?.firstOrNull()
+    /** The remote as it is configured, or null when the repository has no such one. */
+    private fun addressOf(remote: String): RemoteInfo? =
+        gits?.remotes()?.firstOrNull { it.name == remote }
 
     private val Transfer.failurePrefix: String
         get() = if (this == Transfer.PUSH) "Could not push" else "Could not pull"
@@ -806,6 +820,7 @@ class RepoViewModel(
         getApplication<Application>().getString(id, *args)
 
     override fun onCleared() {
+        prompts.abandon()
         runCatching { gits?.close() }
         gits = null
     }

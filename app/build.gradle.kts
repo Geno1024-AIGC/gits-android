@@ -78,6 +78,7 @@ android {
                 "META-INF/LICENSE*",
                 "META-INF/NOTICE*",
                 "META-INF/INDEX.LIST",
+                "OSGI-INF/l10n/plugin.properties",
             )
         }
     }

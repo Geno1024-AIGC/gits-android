@@ -23,6 +23,15 @@ sealed interface Credentials {
     class UsernamePassword(
         val username: String,
         val secret: CharArray,
+        /**
+         * Answers what the transport asks while the exchange is under way, or null
+         * when nothing may be asked of anyone.
+         *
+         * An SSH host wants to know whether its key is to be trusted and may want the
+         * passphrase of a private key, and neither can be asked about before the
+         * connection exists — the fingerprint only exists once the server has sent it.
+         */
+        val questioner: Questioner? = null,
     ) : Credentials {
 
         /** Overwrites the secret in place. Does not make copies already handed out safe. */
@@ -30,6 +39,44 @@ sealed interface Credentials {
             secret.fill(' ')
         }
     }
+}
+
+/** How a [Question] wants to be answered. */
+enum class Answer {
+
+    /** Free text: a username, or anything else said rather than chosen. */
+    TEXT,
+
+    /** Text kept off the screen, such as the passphrase of a private key. */
+    SECRET,
+
+    /** Yes or no: whether a host key may be trusted, most of all. */
+    YES_NO,
+}
+
+/**
+ * A question put in the middle of an exchange, with everything said beside it.
+ *
+ * [messages] is what should be read first — a host key and its fingerprints, say —
+ * and [prompt] is the question's own wording, when it has any.
+ */
+class Question(
+    val kind: Answer,
+    val messages: List<String>,
+    val prompt: String?,
+)
+
+/**
+ * Answers [Question]s from whichever thread the exchange happens to be running on.
+ *
+ * The exchange waits until there is an answer, so an implementation may put the
+ * question to a screen and block until it comes back. Null means the question was
+ * dismissed or refused, which the transport reads as a "no".
+ */
+fun interface Questioner {
+
+    /** What was said: for [Answer.YES_NO], "yes" agrees and anything else does not. */
+    fun ask(question: Question): String?
 }
 
 /**
@@ -105,6 +152,24 @@ fun String.toCredentialHost(): String {
 }
 
 /**
+ * Whether this address is spoken over SSH rather than http or a local path.
+ *
+ * Asked before anything that would rather be told who it is talking to first: an SSH
+ * exchange has no token to ask for, and what it does want — whether a host key may be
+ * trusted — can only be asked once the server has shown it.
+ *
+ * An address without a scheme is the scp spelling, `git@example.com:path`, which is
+ * SSH by name; a scheme is SSH only when it says so, so `https://git@example.com/o/r`
+ * is not.
+ */
+fun String.isSshAddress(): Boolean {
+    val uri = runCatching { URIish(trim()) }.getOrNull() ?: return false
+    val scheme = uri.scheme?.lowercase()
+    if (scheme != null) return scheme == "ssh" || scheme == "git+ssh"
+    return !uri.user.isNullOrEmpty() && !uri.host.isNullOrEmpty()
+}
+
+/**
  * Answers credential prompts for one remote, and refuses to answer for any other.
  *
  * Refusing matters: a provider that hands a token to an unexpected host would leak
@@ -116,30 +181,83 @@ private class GitsCredentialsProvider(
     private val hosts: Set<String>,
 ) : CredentialsProvider() {
 
-    override fun isInteractive(): Boolean = false
+    /** Whether anything may be asked at all; a stored secret needs nobody. */
+    override fun isInteractive(): Boolean = credentials.questioner != null
 
-    override fun supports(vararg items: CredentialItem): Boolean =
-        items.all { it is CredentialItem.Username || it is CredentialItem.Password }
+    override fun supports(vararg items: CredentialItem): Boolean = items.all { it.answerable }
+
+    private val CredentialItem.answerable: Boolean
+        get() = when (this) {
+            is CredentialItem.Username, is CredentialItem.Password -> true
+            // Served rather than answered: what the question is about is said first.
+            is CredentialItem.InformationalMessage -> true
+            is CredentialItem.YesNoType, is CredentialItem.StringType -> isInteractive
+            else -> false
+        }
 
     override fun get(uri: URIish?, vararg items: CredentialItem): Boolean {
         if (items.isEmpty()) return true
         val host = uri?.credentialHost()
-        if (host == null || host !in hosts) {
+        if (host == null) {
+            // JGit's own housekeeping — whether to create known_hosts after a key was
+            // accepted — arrives with a path instead of a host. It carries no secret, so
+            // it is settled here: the host itself was asked about already, and asking
+            // again about the file would make trusting a server a two-step matter.
+            if (items.any { it !is CredentialItem.InformationalMessage && it !is CredentialItem.YesNoType }) {
+                throw TransportException(
+                    "refusing to give credentials for 'an unnamed host'" +
+                        "; they were issued for ${hosts.joinToString()}",
+                )
+            }
+            items.filterIsInstance<CredentialItem.YesNoType>().forEach { it.value = true }
+            return true
+        }
+        if (host !in hosts) {
             throw TransportException(
-                "refusing to give credentials for '${uri?.host ?: "an unnamed host"}'" +
+                "refusing to give credentials for '$host'" +
                     "; they were issued for ${hosts.joinToString()}",
             )
         }
+        // Said before the question rather than beside it: a host key arrives with its
+        // fingerprints in the same answer, and they are the whole reason to say yes.
+        val messages = mutableListOf<String>()
         for (item in items) {
             when (item) {
-                is CredentialItem.Username -> item.value = credentials.username
+                // The message is filed as the prompt: it has no value of its own.
+                is CredentialItem.InformationalMessage -> messages += item.promptText
+                is CredentialItem.Username -> {
+                    val known = credentials.username
+                    if (known.isNotEmpty() || credentials.questioner == null) {
+                        item.value = known
+                    } else {
+                        item.value = ask(messages, item.promptText, Answer.TEXT) ?: return false
+                    }
+                }
                 // The transport clears whatever buffer it is given, so it gets a copy;
                 // handing over ours would leave the caller holding a secret wiped clean
                 // and silently fail on the next push.
-                is CredentialItem.Password -> item.setValueNoCopy(credentials.secret.copyOf())
+                is CredentialItem.Password -> {
+                    val known = credentials.secret
+                    if (known.isNotEmpty() || credentials.questioner == null) {
+                        item.setValueNoCopy(known.copyOf())
+                    } else {
+                        val said = ask(messages, item.promptText, Answer.SECRET) ?: return false
+                        item.setValueNoCopy(said.toCharArray())
+                    }
+                }
+                is CredentialItem.YesNoType -> {
+                    val said = ask(messages, item.promptText, Answer.YES_NO) ?: return false
+                    item.value = said.equals("yes", ignoreCase = true)
+                }
+                is CredentialItem.StringType -> {
+                    item.value = ask(messages, item.promptText, Answer.TEXT) ?: return false
+                }
                 else -> throw UnsupportedCredentialItem(uri, item.javaClass.name)
             }
         }
         return true
     }
+
+    private fun ask(messages: List<String>, prompt: String?, kind: Answer): String? =
+        credentials.questioner?.ask(Question(kind, messages.toList(), prompt))
 }

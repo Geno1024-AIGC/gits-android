@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.geno1024.ai.gits.data.Ssh
 import com.geno1024.ai.gits.ui.theme.GitsTheme
 import com.geno1024.ai.gits.ui.theme.ThemeStore
 import com.geno1024.ai.gits.ui.theme.isDark
@@ -16,6 +17,9 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Before anything can connect: the transport is JVM-wide and looks here for
+        // the keys, the config and the host this app has already trusted.
+        Ssh.install(this)
         setContent {
             val theme by themeStore.settings.collectAsStateWithLifecycle()
             GitsTheme(

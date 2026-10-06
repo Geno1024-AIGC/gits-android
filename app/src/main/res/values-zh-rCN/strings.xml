@@ -6,6 +6,8 @@
     <string name="action_refresh">刷新</string>
     <string name="action_ok">好</string>
     <string name="action_cancel">取消</string>
+    <string name="action_no">否</string>
+    <string name="action_yes">是</string>
     <string name="action_create">创建</string>
     <string name="action_add">添加</string>
     <string name="action_forget">从此列表移除</string>
@@ -28,6 +30,9 @@
     <string name="repo_no_branch">无分支</string>
     <string name="credentials_title">登录 %1$s</string>
     <string name="credentials_detail">%1$s 需要用户名和密钥。它会加密保存，且只提供给 %1$s。</string>
+    <string name="prompt_title_trust">信任这台主机密钥吗？</string>
+    <string name="prompt_title_secret">密码或短语</string>
+    <string name="prompt_title_answer">服务器需要回答</string>
     <string name="field_username">用户名</string>
     <string name="field_token">令牌或密码</string>
     <string name="keys_section">签名密钥</string>

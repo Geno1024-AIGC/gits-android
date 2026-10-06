@@ -3,6 +3,7 @@ package com.geno1024.ai.gits.data
 import android.content.Context
 import com.geno1024.ai.gits.git.Credentials
 import com.geno1024.ai.gits.git.CredentialsSource
+import com.geno1024.ai.gits.git.Questioner
 import java.util.Base64
 
 /** A host the app holds a secret for, and the name that goes with it. */
@@ -80,8 +81,26 @@ class CredentialStore(
         )
     }
 
-    /** Reads the store per host, which is what a transfer should use. */
-    fun asSource(): CredentialsSource = CredentialsSource { host -> credentialsFor(host) }
+    /**
+     * Reads the store per host, with [questioner] able to answer what is missing.
+     *
+     * A stored secret needs nobody: it is there and it is handed over. What has no
+     * secret to store — an SSH host wanting its key trusted, a key wanting its
+     * passphrase — has to ask while the exchange runs, and this is how the exchange
+     * gets hold of whoever can ask.
+     */
+    fun asSource(questioner: Questioner? = null): CredentialsSource = CredentialsSource { host ->
+        if (host == null) Credentials.None else credentialsFor(host).asking(questioner)
+    }
+
+    /** The stored secret for a host, with somebody beside it to ask when there is none. */
+    private fun Credentials.asking(questioner: Questioner?): Credentials = when (this) {
+        is Credentials.UsernamePassword -> Credentials.UsernamePassword(username, secret, questioner)
+        // Nothing stored, but a host is being talked to: an empty credential that can
+        // ask stands for that. Without anyone to ask, nothing is on offer — the same
+        // as before.
+        Credentials.None -> questioner?.let { Credentials.UsernamePassword("", charArrayOf(), it) } ?: this
+    }
 
     private fun userKey(host: String) = "user:$host"
 

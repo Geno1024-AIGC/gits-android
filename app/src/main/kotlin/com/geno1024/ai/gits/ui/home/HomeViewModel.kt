@@ -7,9 +7,12 @@ import com.geno1024.ai.gits.R
 import com.geno1024.ai.gits.data.AppSettings
 import com.geno1024.ai.gits.data.CredentialStore
 import com.geno1024.ai.gits.data.ExternalStorage
+import com.geno1024.ai.gits.data.PromptSession
+import com.geno1024.ai.gits.data.Prompting
 import com.geno1024.ai.gits.data.RecentRepositories
 import com.geno1024.ai.gits.data.RecentRepository
 import com.geno1024.ai.gits.git.Gits
+import com.geno1024.ai.gits.git.isSshAddress
 import com.geno1024.ai.gits.git.toHost
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -52,6 +55,12 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     private val recents = RecentRepositories(application)
     private val settings = AppSettings.of(application)
     private val credentials = CredentialStore.getInstance(application)
+
+    /** What a running clone puts to the screen: a host key to trust, a passphrase. */
+    private val prompts = PromptSession()
+
+    /** The question the clone is waiting on, if any, for the screen to show. */
+    val questions: StateFlow<Prompting?> = prompts.questions
 
     /**
      * A folder this app can always reach, whatever the device's storage rules are.
@@ -182,7 +191,9 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             return
         }
         val host = request.address.toHost()
-        if (host != null && !credentials.has(host)) {
+        // An SSH exchange has no secret to name beforehand: what it wants — a host key
+        // trusted, a private key's passphrase — only turns up once it is under way.
+        if (host != null && !credentials.has(host) && !request.address.isSshAddress()) {
             pending = request
             state.update { it.copy(awaitingCredentials = host) }
             return
@@ -232,7 +243,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                             uri = request.address,
                             directory = request.directory,
                             branch = request.branch,
-                            credentials = credentials.asSource(),
+                            credentials = credentials.asSource(prompts.questioner),
                         ).close()
                     }.exceptionOrNull()?.message
                         ?: if (File(request.directory, ".git").exists()) {
@@ -257,4 +268,9 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     fun report(message: String) = state.update { it.copy(error = message) }
 
     fun clearError() = state.update { it.copy(error = null) }
+
+    /** A question nothing will answer anymore would hold the clone open forever. */
+    override fun onCleared() {
+        prompts.abandon()
+    }
 }

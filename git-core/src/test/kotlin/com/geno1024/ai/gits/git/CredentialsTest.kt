@@ -5,6 +5,7 @@ import org.eclipse.jgit.transport.CredentialItem
 import org.eclipse.jgit.transport.URIish
 import org.junit.jupiter.api.Assertions.assertArrayEquals
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -141,5 +142,19 @@ class CredentialsTest {
         assertEquals("", "/srv/git/repository.git".toCredentialHost())
         assertEquals("", "file:///srv/git/repository.git".toCredentialHost())
         assertEquals("", "".toCredentialHost())
+    }
+
+    @Test
+    fun `an ssh address is told apart from every other`() {
+        assertTrue("git@example.com:owner/repository.git".isSshAddress())
+        assertTrue("ssh://git@example.com/owner/repository.git".isSshAddress())
+        assertTrue("  git@example.com:owner/repository.git  ".isSshAddress())
+        assertTrue("git+ssh://example.com/owner/repository.git".isSshAddress())
+        assertFalse("https://github.com/owner/repository.git".isSshAddress())
+        // A name in the user slot does not make a page over https into SSH.
+        assertFalse("https://git@example.com/owner/repository.git".isSshAddress())
+        assertFalse("/srv/git/repository.git".isSshAddress())
+        assertFalse("file:///srv/git/repository.git".isSshAddress())
+        assertFalse("".isSshAddress())
     }
 }

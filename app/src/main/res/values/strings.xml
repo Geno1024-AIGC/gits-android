@@ -6,6 +6,8 @@
     <string name="action_refresh">Refresh</string>
     <string name="action_ok">OK</string>
     <string name="action_cancel">Cancel</string>
+    <string name="action_no">No</string>
+    <string name="action_yes">Yes</string>
     <string name="action_create">Create</string>
     <string name="action_add">Add</string>
     <string name="action_forget">Remove from this list</string>
@@ -28,6 +30,9 @@
     <string name="repo_no_branch">no branch</string>
     <string name="credentials_title">Sign in to %1$s</string>
     <string name="credentials_detail">%1$s needs a name and a secret. It is stored encrypted, and only ever offered to %1$s.</string>
+    <string name="prompt_title_trust">Trust this host key?</string>
+    <string name="prompt_title_secret">Password or passphrase</string>
+    <string name="prompt_title_answer">The server wants an answer</string>
     <string name="field_username">Username</string>
     <string name="field_token">Token or password</string>
     <string name="keys_section">Signing keys</string>

@@ -84,6 +84,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.geno1024.ai.gits.R
 import com.geno1024.ai.gits.git.WorkingChange
 import com.geno1024.ai.gits.ui.CredentialsDialog
+import com.geno1024.ai.gits.ui.PromptDialog
 import com.geno1024.ai.gits.ui.keys.PassphraseDialog
 import android.app.Application
 import java.text.DateFormat
@@ -101,6 +102,7 @@ fun RepoScreen(path: String, onBack: () -> Unit, onOpenSettings: () -> Unit) {
         factory = viewModelFactory { initializer { RepoViewModel(application, path) } },
     )
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val prompt by viewModel.questions.collectAsStateWithLifecycle()
     val snackbars = remember { SnackbarHostState() }
     // Held here rather than in the pane so that dismissing the dialog does not throw
     // away a message somebody was halfway through writing.
@@ -235,6 +237,10 @@ fun RepoScreen(path: String, onBack: () -> Unit, onOpenSettings: () -> Unit) {
             onDismiss = viewModel::cancelCredentials,
             onConfirm = viewModel::provideCredentials,
         )
+    }
+
+    prompt?.let { asking ->
+        PromptDialog(prompt = asking, onAnswer = asking::answer)
     }
 
     // A tap on a file may mean either of two things, and only the person tapping knows
