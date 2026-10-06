@@ -50,6 +50,7 @@ import com.geno1024.ai.gits.data.AppSettings
 import com.geno1024.ai.gits.data.CredentialStore
 import com.geno1024.ai.gits.data.IdentityStore
 import com.geno1024.ai.gits.data.KeyStore
+import com.geno1024.ai.gits.data.Ssh
 import com.geno1024.ai.gits.data.StoredAccount
 import com.geno1024.ai.gits.data.StoredKey
 import com.geno1024.ai.gits.git.Identity
@@ -75,6 +76,7 @@ import kotlinx.coroutines.withContext
 fun SettingsScreen(
     onBack: () -> Unit,
     onOpenKeys: () -> Unit,
+    onOpenSsh: () -> Unit,
     onOpenUpdates: () -> Unit,
     onOpenAbout: () -> Unit,
     viewModel: SettingsViewModel = viewModel(),
@@ -127,6 +129,18 @@ fun SettingsScreen(
                         state.accounts.joinToString { it.host }
                     },
                     onClick = { editingAccounts = true },
+                )
+            }
+
+            item {
+                SettingsRow(
+                    title = stringResource(R.string.ssh_title),
+                    subtitle = if (state.sshKeys.isEmpty()) {
+                        stringResource(R.string.settings_no_keys)
+                    } else {
+                        stringResource(R.string.settings_keys_selected, state.sshKeys.size)
+                    },
+                    onClick = onOpenSsh,
                 )
             }
 
@@ -520,6 +534,7 @@ data class SettingsUiState(
     val keys: List<StoredKey> = emptyList(),
     val selectedFingerprint: String? = null,
     val accounts: List<StoredAccount> = emptyList(),
+    val sshKeys: List<String> = emptyList(),
     val defaultBranch: String = AppSettings.DEFAULT_BRANCH,
 )
 
@@ -545,12 +560,15 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun refresh() = viewModelScope.launch {
-        val keys = withContext(Dispatchers.IO) { keyStore.keys() }
+        val (keys, sshKeys) = withContext(Dispatchers.IO) {
+            keyStore.keys() to Ssh.identities(getApplication())
+        }
         uiState.value = SettingsUiState(
             identity = identityStore.identity(),
             keys = keys,
             selectedFingerprint = keyStore.selected,
             accounts = credentialStore.accounts().sortedBy { it.host },
+            sshKeys = sshKeys,
             defaultBranch = appSettings.initialBranch,
         )
     }

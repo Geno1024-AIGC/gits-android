@@ -35,6 +35,11 @@
     <string name="prompt_title_answer">服务器需要回答</string>
     <string name="field_username">用户名</string>
     <string name="field_token">令牌或密码</string>
+    <string name="ssh_title">SSH 私钥</string>
+    <string name="ssh_empty">还没有 SSH 私钥。可以导入一个，或把 /sdcard/.ssh 里已有的带进来。</string>
+    <string name="ssh_detected_title">导入 SSH 私钥？</string>
+    <string name="ssh_detected_note">在 /sdcard/.ssh 中发现了私钥，要不要导入？</string>
+    <string name="ssh_replace_note">同名的私钥会被替换。</string>
     <string name="keys_section">签名密钥</string>
     <string name="accounts_section">已登录的主机</string>
     <string name="accounts_no_name">未提供名称</string>
