@@ -28,6 +28,7 @@ object Ssh {
      * or refused, and the keys already in [directory] are the ones tried.
      */
     fun install(context: Context) {
+        directory(context).mkdirs()
         SshSessionFactory.setInstance(
             SshdSessionFactory().apply {
                 setHomeDirectory(context.filesDir)
@@ -60,7 +61,9 @@ object Ssh {
     fun importIdentity(context: Context, bytes: ByteArray, fallbackName: String?): String {
         val name = identityNameFor(bytes, fallbackName)
             ?: error("That file is not a private key this app can name.")
-        File(directory(context), name).writeBytes(bytes)
+        val file = File(directory(context), name)
+        file.parentFile?.mkdirs()
+        file.writeBytes(bytes)
         return name
     }
 
