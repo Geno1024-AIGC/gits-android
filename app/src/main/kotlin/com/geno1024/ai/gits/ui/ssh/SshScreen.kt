@@ -4,6 +4,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -106,19 +107,28 @@ fun SshScreen(onBack: () -> Unit, viewModel: SshViewModel = viewModel()) {
                 )
             } else {
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
-                    items(state.keys) { name ->
+                    items(state.keys) { key ->
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 16.dp, vertical = 4.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Text(
-                                text = name,
-                                style = MaterialTheme.typography.bodyLarge,
-                                modifier = Modifier.weight(1f),
-                            )
-                            IconButton(onClick = { viewModel.remove(name) }) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = key.name,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                )
+                                // What a person who has used this key would recognise.
+                                key.fingerprint?.let { fingerprint ->
+                                    Text(
+                                        text = fingerprint,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            }
+                            IconButton(onClick = { viewModel.remove(key.name) }) {
                                 Icon(
                                     Icons.Default.Close,
                                     contentDescription = stringResource(R.string.action_remove_key),

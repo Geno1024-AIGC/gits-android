@@ -2,6 +2,10 @@ package com.geno1024.ai.gits.data
 
 import android.content.Context
 import android.os.Environment
+import org.apache.sshd.common.config.keys.FilePasswordProvider
+import org.apache.sshd.common.config.keys.KeyUtils
+import org.apache.sshd.common.util.io.resource.PathResource
+import org.apache.sshd.common.util.security.SecurityUtils
 import org.eclipse.jgit.transport.SshSessionFactory
 import org.eclipse.jgit.transport.sshd.SshdSessionFactory
 import java.io.File
@@ -49,6 +53,28 @@ object Ssh {
     /** Which of the identities are held, in the order they are named. */
     fun identities(context: Context): List<String> =
         IDENTITY_NAMES.filter { File(directory(context), it).isFile }
+
+    /** The fingerprint of the identity held under [name], or null when it has none to show. */
+    fun fingerprint(context: Context, name: String): String? = fingerprintOf(File(directory(context), name))
+
+    /**
+     * The fingerprint OpenSSH would print for the key in [file], or null when there is none.
+     *
+     * This is the same digest the transport and `ssh-keygen` speak — `SHA256:` over the
+     * public key as it travels on the wire — so it says what a person who knows this key
+     * would recognise. An encrypted key keeps its public half behind a passphrase, and
+     * asking for one at the sight of a list is the wrong moment, so such a key is listed
+     * under its name alone rather than refused.
+     */
+    fun fingerprintOf(file: File): String? = runCatching {
+        if (!file.isFile) return null
+        file.inputStream().use { stream ->
+            SecurityUtils
+                .loadKeyPairIdentities(null, PathResource(file.toPath()), stream, FilePasswordProvider.EMPTY)
+                ?.firstOrNull()
+                ?.let { KeyUtils.getFingerPrint(it.public) }
+        }
+    }.getOrNull()
 
     /**
      * Stores a private key under its default name, replacing one already there.

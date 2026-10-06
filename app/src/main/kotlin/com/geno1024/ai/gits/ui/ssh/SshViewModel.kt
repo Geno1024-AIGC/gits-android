@@ -15,8 +15,11 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+/** One identity held, under the name the transport knows it by. */
+data class SshKey(val name: String, val fingerprint: String?)
+
 data class SshUiState(
-    val keys: List<String> = emptyList(),
+    val keys: List<SshKey> = emptyList(),
     val detected: List<String> = emptyList(),
     val busy: Boolean = false,
     val error: String? = null,
@@ -42,7 +45,8 @@ class SshViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     /**
-     * Lists what is held, and what in `/sdcard/.ssh` is new or has changed.
+     * Lists what is held — each under its fingerprint, when the bytes yield one — and
+     * what in `/sdcard/.ssh` is new or has changed.
      *
      * A key already held byte for byte is not offered again: the offer is for something
      * this app does not yet have, not a standing accusation that copies exist.
@@ -50,7 +54,7 @@ class SshViewModel(application: Application) : AndroidViewModel(application) {
     fun refresh() = viewModelScope.launch {
         val context = getApplication<Application>()
         val (keys, detected) = withContext(Dispatchers.IO) {
-            val held = Ssh.identities(context)
+            val held = Ssh.identities(context).map { name -> SshKey(name, Ssh.fingerprint(context, name)) }
             val folder = Ssh.directory(context)
             val found = Ssh.externalIdentities(context)
                 .filter { external ->
