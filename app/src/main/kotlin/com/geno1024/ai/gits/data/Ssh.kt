@@ -2,10 +2,17 @@ package com.geno1024.ai.gits.data
 
 import android.content.Context
 import android.os.Environment
+import android.util.Log
 import org.apache.sshd.common.config.keys.FilePasswordProvider
 import org.apache.sshd.common.config.keys.KeyUtils
+import org.apache.sshd.common.config.keys.loader.KeyPairResourceParser
+import org.apache.sshd.common.config.keys.loader.openssh.OpenSSHKeyPairResourceParser
+import org.apache.sshd.common.config.keys.loader.pem.DSSPEMResourceKeyPairParser
+import org.apache.sshd.common.config.keys.loader.pem.ECDSAPEMResourceKeyPairParser
+import org.apache.sshd.common.config.keys.loader.pem.PKCS8PEMResourceKeyPairParser
+import org.apache.sshd.common.config.keys.loader.pem.RSAPEMResourceKeyPairParser
+import org.apache.sshd.common.digest.BuiltinDigests
 import org.apache.sshd.common.util.io.resource.PathResource
-import org.apache.sshd.common.util.security.SecurityUtils
 import org.eclipse.jgit.transport.SshSessionFactory
 import org.eclipse.jgit.transport.sshd.SshdSessionFactory
 import java.io.File
@@ -65,16 +72,39 @@ object Ssh {
      * would recognise. An encrypted key keeps its public half behind a passphrase, and
      * asking for one at the sight of a list is the wrong moment, so such a key is listed
      * under its name alone rather than refused.
+     *
+     * The parser is picked from the file's own begin marker instead of asking sshd for
+     * its registered set: registering the whole set initializes every parser there is,
+     * and on a phone that has been seen to fail where the one parser this file needs
+     * does not. A failure still says itself, in the log, rather than passing as silence.
      */
-    fun fingerprintOf(file: File): String? = runCatching {
+    fun fingerprintOf(file: File): String? {
         if (!file.isFile) return null
-        file.inputStream().use { stream ->
-            SecurityUtils
-                .loadKeyPairIdentities(null, PathResource(file.toPath()), stream, FilePasswordProvider.EMPTY)
+        return runCatching {
+            val lines = file.readLines()
+            val parser = parserFor(lines)
+                ?: error("No parser for the begin marker of ${file.name}")
+            parser
+                .loadKeyPairs(null, PathResource(file.toPath()), FilePasswordProvider.EMPTY, lines)
                 ?.firstOrNull()
-                ?.let { KeyUtils.getFingerPrint(it.public) }
+                ?.let { KeyUtils.getFingerPrint(BuiltinDigests.sha256, it.public) }
+        }.onFailure { failure ->
+            Log.w("Ssh", "No fingerprint for ${file.name}: $failure")
+        }.getOrNull()
+    }
+
+    /** The parser that reads files beginning with [lines]' begin marker, when there is one. */
+    private fun parserFor(lines: List<String>): KeyPairResourceParser? {
+        val marker = lines.firstOrNull { it.startsWith("-----BEGIN ") } ?: return null
+        return when (marker) {
+            "-----BEGIN RSA PRIVATE KEY-----" -> RSAPEMResourceKeyPairParser.INSTANCE
+            "-----BEGIN DSA PRIVATE KEY-----" -> DSSPEMResourceKeyPairParser.INSTANCE
+            "-----BEGIN EC PRIVATE KEY-----" -> ECDSAPEMResourceKeyPairParser.INSTANCE
+            "-----BEGIN PRIVATE KEY-----" -> PKCS8PEMResourceKeyPairParser.INSTANCE
+            "-----BEGIN OPENSSH PRIVATE KEY-----" -> OpenSSHKeyPairResourceParser.INSTANCE
+            else -> null
         }
-    }.getOrNull()
+    }
 
     /**
      * Stores a private key under its default name, replacing one already there.
