@@ -29,6 +29,9 @@ import java.util.Base64
  */
 object Ssh {
 
+    /** What one key is known by, in both forms OpenSSH prints a fingerprint. */
+    data class Fingerprints(val sha256: String, val md5: String)
+
     /** The directory standing in for `~/.ssh`, inside this app's own storage. */
     fun directory(context: Context): File = File(context.filesDir, ".ssh")
 
@@ -70,24 +73,27 @@ object Ssh {
     fun identities(context: Context): List<String> =
         IDENTITY_NAMES.filter { File(directory(context), it).isFile }
 
-    /** The fingerprint of the identity held under [name], or null when it has none to show. */
-    fun fingerprint(context: Context, name: String): String? = fingerprintOf(File(directory(context), name))
+    /** Both names of the identity held under [name], or null when it has none to show. */
+    fun fingerprints(context: Context, name: String): Fingerprints? =
+        fingerprintsOf(File(directory(context), name))
 
     /**
-     * The fingerprint OpenSSH would print for the key in [file], or null when there is none.
+     * The names OpenSSH would print for the key in [file], in both forms, or null.
      *
-     * This is the same digest the transport and `ssh-keygen` speak — `SHA256:` over the
-     * public key as it travels on the wire — so it says what a person who knows this key
-     * would recognise. An encrypted key keeps its public half behind a passphrase, and
-     * asking for one at the sight of a list is the wrong moment, so such a key is listed
-     * under its name alone rather than refused.
+     * `SHA256:` over the public key as it travels on the wire — what `ssh-keygen -lf`
+     * prints today — and the colon-separated MD5 of the same bytes — what it printed
+     * for years, and what host key prompts still show alongside. Both come from the
+     * key's own bytes, so there is nothing to store beside it and nothing to drift.
+     * An encrypted key keeps its public half behind a passphrase, and asking for one
+     * at the sight of a list is the wrong moment, so such a key is listed under its
+     * name alone rather than refused.
      *
      * The parser is picked from the file's own begin marker instead of asking sshd for
      * its registered set: registering the whole set initializes every parser there is,
      * and on a phone that has been seen to fail where the one parser this file needs
      * does not. A failure still says itself, in the log, rather than passing as silence.
      */
-    fun fingerprintOf(file: File): String? {
+    fun fingerprintsOf(file: File): Fingerprints? {
         if (!file.isFile) return null
         return runCatching {
             val lines = file.readLines()
@@ -96,7 +102,12 @@ object Ssh {
             parser
                 .loadKeyPairs(null, PathResource(file.toPath()), FilePasswordProvider.EMPTY, lines)
                 ?.firstOrNull()
-                ?.let { KeyUtils.getFingerPrint(BuiltinDigests.sha256, it.public) }
+                ?.let {
+                    Fingerprints(
+                        sha256 = KeyUtils.getFingerPrint(BuiltinDigests.sha256, it.public),
+                        md5 = KeyUtils.getFingerPrint(BuiltinDigests.md5, it.public),
+                    )
+                }
         }.onFailure { failure ->
             Log.w("Ssh", "No fingerprint for ${file.name}: $failure")
         }.getOrNull()

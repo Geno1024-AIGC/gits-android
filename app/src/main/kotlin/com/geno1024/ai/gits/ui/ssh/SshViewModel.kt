@@ -16,7 +16,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /** One identity held, under the name the transport knows it by. */
-data class SshKey(val name: String, val fingerprint: String?)
+data class SshKey(val name: String, val fingerprints: Ssh.Fingerprints?)
 
 data class SshUiState(
     val keys: List<SshKey> = emptyList(),
@@ -54,7 +54,7 @@ class SshViewModel(application: Application) : AndroidViewModel(application) {
     fun refresh() = viewModelScope.launch {
         val context = getApplication<Application>()
         val (keys, detected) = withContext(Dispatchers.IO) {
-            val held = Ssh.identities(context).map { name -> SshKey(name, Ssh.fingerprint(context, name)) }
+            val held = Ssh.identities(context).map { name -> SshKey(name, Ssh.fingerprints(context, name)) }
             val folder = Ssh.directory(context)
             val found = Ssh.externalIdentities(context)
                 .filter { external ->

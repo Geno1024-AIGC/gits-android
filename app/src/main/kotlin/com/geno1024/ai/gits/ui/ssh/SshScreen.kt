@@ -119,10 +119,17 @@ fun SshScreen(onBack: () -> Unit, viewModel: SshViewModel = viewModel()) {
                                     text = key.name,
                                     style = MaterialTheme.typography.bodyLarge,
                                 )
-                                // What a person who has used this key would recognise.
-                                key.fingerprint?.let { fingerprint ->
+                                // What a person who has used this key would recognise,
+                                // in both forms OpenSSH prints: SHA-256, then the older
+                                // colon-separated MD5.
+                                key.fingerprints?.let { fingerprints ->
                                     Text(
-                                        text = fingerprint,
+                                        text = fingerprints.sha256,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                    Text(
+                                        text = fingerprints.md5,
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )

@@ -12,23 +12,25 @@ import org.junit.jupiter.api.io.TempDir
 /**
  * What a held key says about itself once it is looked at.
  *
- * The fingerprint is the answer OpenSSH would give to `ssh-keygen -lf`, taken from the
- * bytes of the key itself, so it says the same thing here as it would in a terminal —
- * there is nothing to store alongside it and nothing for it to drift from. A file that
- * is not a key says nothing and is given nothing.
+ * Both fingerprints are the answers OpenSSH would give to `ssh-keygen -lf` — the
+ * SHA-256 it prints now and the colon-separated MD5 it printed for years — taken
+ * from the bytes of the key itself, so they say the same thing here as they would
+ * in a terminal: nothing to store alongside and nothing for them to drift from.
+ * A file that is not a key says nothing and is given nothing.
  */
 class SshFingerprintTest {
 
     @Test
-    fun `a held key carries the fingerprint OpenSSH would print`(@TempDir dir: Path) {
+    fun `a held key carries the fingerprints OpenSSH would print`(@TempDir dir: Path) {
         val keyPair = KeyPairGenerator.getInstance("RSA").apply { initialize(2048) }.generateKeyPair()
         val file = dir.resolve("id_rsa").toFile()
         file.writeBytes(pem(keyPair.private.encoded))
 
-        val fingerprint = Ssh.fingerprintOf(file)
+        val fingerprints = Ssh.fingerprintsOf(file)
 
-        assertTrue(fingerprint!!.startsWith("SHA256:"), "was: $fingerprint")
-        assertTrue(fingerprint.length > "SHA256:".length + 40, "too short: $fingerprint")
+        assertTrue(fingerprints!!.sha256.startsWith("SHA256:"), "was: ${fingerprints.sha256}")
+        assertTrue(fingerprints.md5.matches(Regex("MD5:(?:[0-9a-f]{2}:){15}[0-9a-f]{2}")),
+            "was: ${fingerprints.md5}")
     }
 
     @Test
@@ -36,24 +38,30 @@ class SshFingerprintTest {
         val file = dir.resolve("id_rsa").toFile()
         file.writeText("just some notes")
 
-        assertNull(Ssh.fingerprintOf(file))
-        assertNull(Ssh.fingerprintOf(dir.resolve("never written").toFile()))
+        assertNull(Ssh.fingerprintsOf(file))
+        assertNull(Ssh.fingerprintsOf(dir.resolve("never written").toFile()))
     }
 
     @Test
-    fun `the shape ssh-keygen writes carries ssh-keygen's own answer`(@TempDir dir: Path) {
+    fun `the shape ssh-keygen writes carries ssh-keygen's own answers`(@TempDir dir: Path) {
         val file = dir.resolve("id_ed25519").toFile()
         file.writeText(ED25519_OPENSSH)
 
-        assertEquals("SHA256:bzg2yT0M6WhMVEYO9lie9y2VbYRz3iHOp+pK9svFKX0", Ssh.fingerprintOf(file))
+        val fingerprints = Ssh.fingerprintsOf(file)
+
+        assertEquals("SHA256:bzg2yT0M6WhMVEYO9lie9y2VbYRz3iHOp+pK9svFKX0", fingerprints!!.sha256)
+        assertEquals("MD5:f4:f2:dc:f6:6b:11:aa:d2:b6:c6:14:51:3c:76:6d:c4", fingerprints.md5)
     }
 
     @Test
-    fun `an old-style PEM RSA key carries ssh-keygen's own answer`(@TempDir dir: Path) {
+    fun `an old-style PEM RSA key carries ssh-keygen's own answers`(@TempDir dir: Path) {
         val file = dir.resolve("id_rsa").toFile()
         file.writeText(RSA_PKCS1_PEM)
 
-        assertEquals("SHA256:a1hv22D95/HPMZkGyLoyCQxiEK5sT0MXcQgRWPNSfec", Ssh.fingerprintOf(file))
+        val fingerprints = Ssh.fingerprintsOf(file)
+
+        assertEquals("SHA256:a1hv22D95/HPMZkGyLoyCQxiEK5sT0MXcQgRWPNSfec", fingerprints!!.sha256)
+        assertEquals("MD5:ae:c1:c3:87:2c:98:15:18:a0:8e:0d:91:cc:59:b0:0e", fingerprints.md5)
     }
 
     /** PKCS#8, wrapped the way a key file is wrapped. */
