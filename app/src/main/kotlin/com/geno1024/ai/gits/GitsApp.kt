@@ -46,7 +46,6 @@ fun GitsApp() {
                 onBack = { controller.popBackStack() },
                 onOpenKeys = { controller.navigate(Routes.KEYS) { launchSingleTop = true } },
                 onOpenSsh = { controller.navigate(Routes.SSH) { launchSingleTop = true } },
-                onOpenUpdates = { controller.navigate(Routes.UPDATES) { launchSingleTop = true } },
                 onOpenAbout = { controller.navigate(Routes.ABOUT) { launchSingleTop = true } },
             )
         }
@@ -63,7 +62,10 @@ fun GitsApp() {
             UpdateScreen(onBack = { controller.popBackStack() })
         }
         composable(Routes.ABOUT) {
-            AboutScreen(onBack = { controller.popBackStack() })
+            AboutScreen(
+                onBack = { controller.popBackStack() },
+                onOpenUpdates = { controller.navigate(Routes.UPDATES) { launchSingleTop = true } },
+            )
         }
         composable(
             route = "${Routes.REPO}/{path}",

@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -22,7 +24,8 @@ import com.geno1024.ai.gits.BuildConfig
 import com.geno1024.ai.gits.R
 
 /**
- * Who made this, what build it is, and the words it uses for git's parts.
+ * Who made this, what build it is, where a newer one comes from, and the words it
+ * uses for git's parts.
  *
  * The glossary is here rather than in a help article because it is the one thing a
  * reader of a Chinese interface most needs explained: two serious references exist,
@@ -30,7 +33,7 @@ import com.geno1024.ai.gits.R
  * answers why a familiar term is written the way it is.
  */
 @Composable
-fun AboutScreen(onBack: () -> Unit) {
+fun AboutScreen(onBack: () -> Unit, onOpenUpdates: () -> Unit) {
     SettingsScaffold(
         title = stringResource(R.string.about_title),
         onBack = onBack,
@@ -50,6 +53,13 @@ fun AboutScreen(onBack: () -> Unit) {
                 value = BuildConfig.VERSION_NAME,
             )
 
+            HorizontalDivider()
+            SettingsRow(
+                icon = Icons.Default.SystemUpdate,
+                title = stringResource(R.string.update_title),
+                subtitle = stringResource(R.string.settings_update_subtitle),
+                onClick = onOpenUpdates,
+            )
             HorizontalDivider()
 
             SectionHeader(stringResource(R.string.about_terms))

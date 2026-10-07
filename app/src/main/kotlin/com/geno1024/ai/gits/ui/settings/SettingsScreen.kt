@@ -30,7 +30,6 @@ import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material.icons.filled.VpnKey
 import androidx.compose.material3.AlertDialog
@@ -99,7 +98,6 @@ fun SettingsScreen(
     onBack: () -> Unit,
     onOpenKeys: () -> Unit,
     onOpenSsh: () -> Unit,
-    onOpenUpdates: () -> Unit,
     onOpenAbout: () -> Unit,
     viewModel: SettingsViewModel = viewModel(),
 ) {
@@ -226,13 +224,6 @@ fun SettingsScreen(
             item {
                 SectionHeader(stringResource(R.string.settings_section_app))
                 SettingsCard {
-                    SettingsRow(
-                        icon = Icons.Default.SystemUpdate,
-                        title = stringResource(R.string.update_title),
-                        subtitle = stringResource(R.string.settings_update_subtitle),
-                        onClick = onOpenUpdates,
-                    )
-                    RowDivider()
                     SettingsRow(
                         icon = Icons.Default.Info,
                         title = stringResource(R.string.about_title),
@@ -378,7 +369,7 @@ private fun RowDivider() {
  * in the face it is read in.
  */
 @Composable
-private fun SettingsRow(
+fun SettingsRow(
     icon: ImageVector,
     title: String,
     subtitle: String,
