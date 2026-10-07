@@ -51,7 +51,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -297,6 +301,7 @@ fun HomeScreen(
                     text = forgetting.joinToString { it.name },
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
+                    fontFamily = FontFamily.Monospace,
                 )
             },
             text = { Text(stringResource(R.string.home_forget_note)) },
@@ -397,12 +402,14 @@ private fun RepositoryRow(
                 Text(
                     text = repository.name,
                     style = MaterialTheme.typography.titleMedium,
+                    fontFamily = FontFamily.Monospace,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
                     text = repository.path,
                     style = MaterialTheme.typography.bodySmall,
+                    fontFamily = FontFamily.Monospace,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -584,7 +591,14 @@ private fun ParentField(parent: File?, onPickParent: () -> Unit) {
             )
         }
         Text(
-            text = parent?.path ?: stringResource(R.string.create_no_parent),
+            text = buildAnnotatedString {
+                val path = parent?.path
+                if (path != null) {
+                    withStyle(SpanStyle(fontFamily = FontFamily.Monospace)) { append(path) }
+                } else {
+                    append(stringResource(R.string.create_no_parent))
+                }
+            },
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 2,

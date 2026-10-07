@@ -487,6 +487,7 @@ private fun WorkingTreePane(state: RepoUiState, viewModel: RepoViewModel) {
                                 text = "..",
                                 modifier = Modifier.weight(1f),
                                 style = MaterialTheme.typography.bodyMedium,
+                                fontFamily = FontFamily.Monospace,
                             )
                         }
                     }
@@ -528,6 +529,7 @@ private fun WorkingTreePane(state: RepoUiState, viewModel: RepoViewModel) {
                         Text(
                             text = if (entry.directory) "${entry.name}/" else entry.name,
                             modifier = Modifier.weight(1f),
+                            fontFamily = FontFamily.Monospace,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
@@ -973,7 +975,11 @@ private fun BranchesPane(state: RepoUiState, viewModel: RepoViewModel) {
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(branch.name, style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            branch.name,
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontFamily = FontFamily.Monospace,
+                        )
                         val tracking = branch.upstreamName
                             ?: "no upstream"
                         Text(
@@ -1046,11 +1052,16 @@ private fun RemotesPane(state: RepoUiState, viewModel: RepoViewModel) {
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(remote.name, style = MaterialTheme.typography.bodyLarge)
+                            Text(
+                                remote.name,
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontFamily = FontFamily.Monospace,
+                            )
                             remote.uris.forEach { uri ->
                                 Text(
                                     text = uri,
                                     style = MaterialTheme.typography.labelSmall,
+                                    fontFamily = FontFamily.Monospace,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
@@ -1200,6 +1211,7 @@ private fun ChangeRow(
         Text(
             text = change.path,
             modifier = Modifier.weight(1f),
+            fontFamily = FontFamily.Monospace,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
@@ -1349,6 +1361,7 @@ private fun TextDialog(
                         text = title,
                         modifier = Modifier.weight(1f),
                         style = MaterialTheme.typography.titleSmall,
+                        fontFamily = FontFamily.Monospace,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )

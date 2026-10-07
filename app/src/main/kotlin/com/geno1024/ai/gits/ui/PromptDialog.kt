@@ -67,6 +67,7 @@ fun PromptDialog(prompt: Prompting, onAnswer: (String?) -> Unit) {
                         Text(
                             text = it,
                             style = MaterialTheme.typography.bodySmall,
+                            fontFamily = FontFamily.Monospace,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
