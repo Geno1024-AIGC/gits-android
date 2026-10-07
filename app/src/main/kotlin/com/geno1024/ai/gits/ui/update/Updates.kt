@@ -85,15 +85,9 @@ fun Updates(
                 modifier = Modifier.weight(1f),
             )
             TextButton(onClick = viewModel::check, enabled = !state.checking) {
-                Text(stringResource(R.string.action_refresh))
+                Text(stringResource(R.string.action_check_update))
             }
         }
-        Text(
-            text = stringResource(R.string.settings_update_subtitle),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 4.dp),
-        )
         UpdatePanel(viewModel = viewModel)
     }
 }
@@ -115,8 +109,6 @@ private fun UpdatePanel(
                 .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            InstalledRow(state.installed)
-
             ReleaseCard(
                 state = state,
                 onDownload = viewModel::download,
@@ -145,27 +137,11 @@ private fun UpdatePanel(
                     onSelect = { viewModel.setSource(source) },
                 )
             }
-            FeedNote()
         }
 
         state.error?.let { message ->
             ErrorBar(message = message, onDismiss = viewModel::dismissError)
         }
-    }
-}
-
-@Composable
-private fun InstalledRow(installed: String) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(
-            text = stringResource(R.string.update_installed_label),
-            style = MaterialTheme.typography.titleSmall,
-        )
-        Text(
-            text = installed.ifBlank { stringResource(R.string.update_unknown_version) },
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
     }
 }
 
@@ -178,11 +154,6 @@ private fun ReleaseCard(
 ) {
     val release = state.available
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(
-            text = stringResource(R.string.update_available_label),
-            style = MaterialTheme.typography.titleSmall,
-        )
-
         // A spinner alone, replacing the card, is what made a slow check look like a
         // dead screen. The previous answer stays, with the check shown as a side note.
         if (state.checking) {
@@ -289,15 +260,6 @@ private fun SourceRow(source: Updater.Source, selected: Boolean, onSelect: () ->
         RadioButton(selected = selected, onClick = onSelect)
         Text(text = source.label, style = MaterialTheme.typography.bodyLarge)
     }
-}
-
-@Composable
-private fun FeedNote() {
-    Text(
-        text = stringResource(R.string.update_feed_note),
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
 }
 
 @Composable

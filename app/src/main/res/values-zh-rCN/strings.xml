@@ -143,10 +143,7 @@
     <string name="create_no_parent">还没有位置 —— 点文件夹按钮来选一个。</string>
 
     <string name="update_title">更新</string>
-    <string name="update_installed_label">已安装</string>
     <string name="update_last_outcome_heading">上次安装结果</string>
-    <string name="update_unknown_version">未知</string>
-    <string name="update_available_label">更新的版本</string>
     <string name="update_checking">正在检查是否有新版本…</string>
     <string name="update_up_to_date">没有比这更新的已发布版本。</string>
     <string name="update_download">下载</string>
@@ -154,7 +151,6 @@
     <string name="update_install">安装</string>
     <string name="update_not_now">暂不</string>
     <string name="update_source_heading">下载来源</string>
-    <string name="update_feed_note">有哪些版本始终以 GitHub 为准。镜像只接管下载环节，所以镜像无法让此应用安装与 GitHub 上所标不同的版本。</string>
     <string name="update_channel">正在安装</string>
     <string name="update_installed">已安装。新版本可以使用了。</string>
     <string name="update_install_canceled">安装已取消。</string>
@@ -203,7 +199,6 @@
     <string name="settings_default_branch_note">新建仓库以此为起点。新建对话框会预填它，也仍可修改。</string>
     <string name="settings_accounts_none">还没有</string>
     <string name="settings_accounts_empty">还没有主机。需要时会自动询问，也可以先在这里填好用户名和密钥。</string>
-    <string name="settings_update_subtitle">检查并安装新版本</string>
 
     <string name="settings_appearance">外观</string>
     <string name="settings_theme">主题</string>

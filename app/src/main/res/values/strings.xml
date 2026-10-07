@@ -146,10 +146,7 @@
     <string name="create_no_parent">Nowhere yet \u2014 tap the folder button to pick one.</string>
 
     <string name="update_title">Updates</string>
-    <string name="update_installed_label">Installed</string>
     <string name="update_last_outcome_heading">Last attempt</string>
-    <string name="update_unknown_version">unknown</string>
-    <string name="update_available_label">Newer build</string>
     <string name="update_checking">Checking for a newer build\u2026</string>
     <string name="update_up_to_date">Nothing newer than this is published.</string>
     <string name="update_download">Download</string>
@@ -157,9 +154,6 @@
     <string name="update_install">Install</string>
     <string name="update_not_now">Not now</string>
     <string name="update_source_heading">Download from</string>
-    <string name="update_feed_note">Which builds exist is always read from GitHub. A mirror only
-        moves the download, so a mirror cannot talk this app into installing a different
-        build than the one GitHub named.</string>
     <string name="update_channel">Installing</string>
     <string name="update_installed">Installed. The new version is ready to use.</string>
     <string name="update_install_canceled">The install was cancelled.</string>
@@ -212,7 +206,6 @@
     <string name="settings_default_branch_note">New repositories start on this. The create dialog opens with it and still takes an edit.</string>
     <string name="settings_accounts_none">None yet</string>
     <string name="settings_accounts_empty">No host yet. One is asked for when it is needed, or a name and a secret can be given here first.</string>
-    <string name="settings_update_subtitle">Check for and install newer builds</string>
 
     <string name="settings_appearance">Appearance</string>
     <string name="settings_theme">Theme</string>
