@@ -2,31 +2,19 @@ package com.geno1024.ai.gits.ui.update
 
 import android.app.Activity
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -36,7 +24,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -46,93 +33,34 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.geno1024.ai.gits.R
 import com.geno1024.ai.gits.ui.theme.MonoFontFamily
 import com.geno1024.ai.gits.update.ApkInstaller
-import kotlinx.coroutines.launch
 import com.geno1024.ai.gits.update.Updater
+import kotlinx.coroutines.launch
 
 /**
- * Where newer builds are found, fetched from, and installed.
+ * Where newer builds are found, fetched from, and installed — a section of the
+ * about screen rather than a destination of its own, because a version number
+ * and the offer of a newer one are the same thought.
  *
  * The source is offered as a choice rather than a fallback because whether GitHub's
  * file hosts are reachable is a property of the network a person is on, not of the app.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun UpdatePanel(
-    viewModel: UpdateViewModel,
-    modifier: Modifier = Modifier,
-) {
-    val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val noActivityMessage = stringResource(R.string.update_install_no_activity)
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-
-    Box(modifier = modifier.fillMaxSize()) {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            item { InstalledRow(state.installed) }
-
-            item {
-                ReleaseCard(
-                    state = state,
-                    onDownload = viewModel::download,
-                    onInstall = { apk ->
-                        // A tap that finds no activity used to return here and vanish.
-                        // It is a genuine failure, and the one that matters most is the
-                        // device with nothing able to open an APK, which is exactly when
-                        // a person needs to be told rather than left tapping.
-                        val activity = context.findActivity()
-                        if (activity == null) {
-                            viewModel.noteInstallOutcome(noActivityMessage)
-                        } else {
-                            // The install copies tens of megabytes, so it runs off the
-                            // main thread and this scope is what the frame waits on.
-                            scope.launch { ApkInstaller.install(activity, apk, viewModel::noteInstallOutcome) }
-                        }
-                    },
-                    onDismissNotice = viewModel::dismiss,
-                )
-            }
-
-            item { SourceHeading() }
-
-            items(Updater.SOURCES, key = { it.id }) { source ->
-                SourceRow(
-                    source = source,
-                    selected = source.id == state.source.id,
-                    onSelect = { viewModel.setSource(source) },
-                )
-            }
-
-            item { FeedNote() }
-        }
-
-        state.error?.let { message ->
-            ErrorBar(message = message, onDismiss = viewModel::dismissError)
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun UpdateScreen(
-    onBack: () -> Unit,
+fun Updates(
     viewModel: UpdateViewModel = viewModel(),
+    modifier: Modifier = Modifier,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val lifecycleOwner = LocalLifecycleOwner.current
 
     // The ViewModel is kept by the navigation entry, so a return visit finds the same
     // one that was built the first time. Checking has to be asked for again from here,
-    // or the screen would show a stale answer while looking like it had just looked.
+    // or the section would show a stale answer while looking like it had just looked.
     LaunchedEffect(Unit) {
         viewModel.recheckIfStale()
         viewModel.refreshInstallOutcome()
     }
 
-    // The install itself happens on top of this screen, and its outcome is written to
+    // The install itself happens on top of this section, and its outcome is written to
     // storage by a receiver that has no view to write to. Reading it back on the way up
     // is what stops the row being one navigation behind the tap that changed it.
     DisposableEffect(lifecycleOwner) {
@@ -143,27 +71,86 @@ fun UpdateScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.update_title)) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.action_back),
-                        )
-                    }
-                },
-                actions = {
-                    TextButton(onClick = viewModel::check, enabled = !state.checking) {
-                        Text(stringResource(R.string.action_refresh))
-                    }
-                },
+    Column(modifier = modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 16.dp, end = 8.dp, top = 20.dp, bottom = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = stringResource(R.string.update_title),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.weight(1f),
             )
-        },
-    ) { padding ->
-        UpdatePanel(viewModel = viewModel, modifier = Modifier.padding(padding))
+            TextButton(onClick = viewModel::check, enabled = !state.checking) {
+                Text(stringResource(R.string.action_refresh))
+            }
+        }
+        Text(
+            text = stringResource(R.string.settings_update_subtitle),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 4.dp),
+        )
+        UpdatePanel(viewModel = viewModel)
+    }
+}
+
+@Composable
+private fun UpdatePanel(
+    viewModel: UpdateViewModel,
+    modifier: Modifier = Modifier,
+) {
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val noActivityMessage = stringResource(R.string.update_install_no_activity)
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
+    Column(modifier = modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            InstalledRow(state.installed)
+
+            ReleaseCard(
+                state = state,
+                onDownload = viewModel::download,
+                onInstall = { apk ->
+                    // A tap that finds no activity used to return here and vanish.
+                    // It is a genuine failure, and the one that matters most is the
+                    // device with nothing able to open an APK, which is exactly when
+                    // a person needs to be told rather than left tapping.
+                    val activity = context.findActivity()
+                    if (activity == null) {
+                        viewModel.noteInstallOutcome(noActivityMessage)
+                    } else {
+                        // The install copies tens of megabytes, so it runs off the
+                        // main thread and this scope is what the frame waits on.
+                        scope.launch { ApkInstaller.install(activity, apk, viewModel::noteInstallOutcome) }
+                    }
+                },
+                onDismissNotice = viewModel::dismiss,
+            )
+
+            SourceHeading()
+            Updater.SOURCES.forEach { source ->
+                SourceRow(
+                    source = source,
+                    selected = source.id == state.source.id,
+                    onSelect = { viewModel.setSource(source) },
+                )
+            }
+            FeedNote()
+        }
+
+        state.error?.let { message ->
+            ErrorBar(message = message, onDismiss = viewModel::dismissError)
+        }
     }
 }
 

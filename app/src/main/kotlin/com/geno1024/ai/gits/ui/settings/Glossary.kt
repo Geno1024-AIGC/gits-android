@@ -38,3 +38,19 @@ val GLOSSARY: List<GlossaryEntry> = listOf(
     GlossaryEntry("log", "日志", "日志"),
     GlossaryEntry("sign", "签名", "签名"),
 )
+
+/**
+ * Whether the two references give a term the same way: the same set of
+ * alternatives once each list is split on its separators.
+ *
+ * The comparison is by set rather than by string so that `拉，拉取` and `拉、拉取`
+ * count as one wording spoken with two list marks, and a difference that is
+ * only in punctuation is not shown to a reader as a disagreement.
+ */
+val GlossaryEntry.agreed: Boolean
+    get() {
+        val separators = Regex("[、，；]")
+        val ours = git.split(separators).filter { it.isNotBlank() }.toSet()
+        val theirs = proGit2.split(separators).filter { it.isNotBlank() }.toSet()
+        return ours == theirs
+    }

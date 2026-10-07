@@ -12,7 +12,6 @@ import com.geno1024.ai.gits.ui.repo.RepoScreen
 import com.geno1024.ai.gits.ui.ssh.SshScreen
 import com.geno1024.ai.gits.ui.settings.AboutScreen
 import com.geno1024.ai.gits.ui.settings.SettingsScreen
-import com.geno1024.ai.gits.ui.update.UpdateScreen
 import java.io.File
 
 private object Routes {
@@ -21,7 +20,6 @@ private object Routes {
     const val KEYS = "keys"
     const val SSH = "ssh"
     const val SETTINGS = "settings"
-    const val UPDATES = "updates"
     const val ABOUT = "about"
 
     /** Paths go in the back stack as an argument, so they are encoded, not interpolated. */
@@ -58,14 +56,8 @@ fun GitsApp() {
         composable(Routes.SSH) {
             SshScreen(onBack = { controller.popBackStack() })
         }
-        composable(Routes.UPDATES) {
-            UpdateScreen(onBack = { controller.popBackStack() })
-        }
         composable(Routes.ABOUT) {
-            AboutScreen(
-                onBack = { controller.popBackStack() },
-                onOpenUpdates = { controller.navigate(Routes.UPDATES) { launchSingleTop = true } },
-            )
+            AboutScreen(onBack = { controller.popBackStack() })
         }
         composable(
             route = "${Routes.REPO}/{path}",
