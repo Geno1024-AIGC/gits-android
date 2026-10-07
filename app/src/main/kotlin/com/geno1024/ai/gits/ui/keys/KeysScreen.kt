@@ -42,7 +42,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -53,6 +52,7 @@ import com.geno1024.ai.gits.R
 import com.geno1024.ai.gits.data.StoredAccount
 import com.geno1024.ai.gits.data.StoredKey
 import com.geno1024.ai.gits.openpgp.KeyAlgorithm
+import com.geno1024.ai.gits.ui.theme.MonoFontFamily
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -294,7 +294,7 @@ private fun KeyRow(
                 Text(
                     text = key.fingerprintHex.chunked(4).joinToString(" "),
                     style = MaterialTheme.typography.labelSmall,
-                    fontFamily = FontFamily.Monospace,
+                    fontFamily = MonoFontFamily,
                 )
                 Text(
                     text = buildString {

@@ -36,7 +36,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -45,6 +44,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.geno1024.ai.gits.R
+import com.geno1024.ai.gits.ui.theme.MonoFontFamily
 import com.geno1024.ai.gits.update.ApkInstaller
 import kotlinx.coroutines.launch
 import com.geno1024.ai.gits.update.Updater
@@ -223,7 +223,7 @@ private fun ReleaseCard(
                 Text(
                     text = release.version?.toString().orEmpty(),
                     style = MaterialTheme.typography.bodySmall,
-                    fontFamily = FontFamily.Monospace,
+                    fontFamily = MonoFontFamily,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 if (state.downloading) {

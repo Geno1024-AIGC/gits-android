@@ -35,10 +35,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.geno1024.ai.gits.R
+import com.geno1024.ai.gits.ui.theme.MonoFontFamily
 
 /** Colours the swatch row offers before anyone reaches for the sliders. */
 private val presetColors = listOf(
@@ -157,7 +157,7 @@ fun ColorPickerDialog(
                     Text(
                         text = hex,
                         color = contrastColor(currentColor),
-                        fontFamily = FontFamily.Monospace,
+                        fontFamily = MonoFontFamily,
                     )
                 }
                 OutlinedTextField(

@@ -15,13 +15,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.geno1024.ai.gits.R
 import com.geno1024.ai.gits.data.Prompting
 import com.geno1024.ai.gits.git.Answer
+import com.geno1024.ai.gits.ui.theme.MonoFontFamily
 
 /**
  * Puts a question from a running exchange to the person using the app.
@@ -58,7 +58,7 @@ fun PromptDialog(prompt: Prompting, onAnswer: (String?) -> Unit) {
                     Text(
                         text = prompt.messages.joinToString("\n"),
                         style = MaterialTheme.typography.bodySmall,
-                        fontFamily = FontFamily.Monospace,
+                        fontFamily = MonoFontFamily,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
@@ -67,7 +67,7 @@ fun PromptDialog(prompt: Prompting, onAnswer: (String?) -> Unit) {
                         Text(
                             text = it,
                             style = MaterialTheme.typography.bodySmall,
-                            fontFamily = FontFamily.Monospace,
+                            fontFamily = MonoFontFamily,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }

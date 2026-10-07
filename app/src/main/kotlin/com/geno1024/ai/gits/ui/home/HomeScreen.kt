@@ -53,7 +53,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
@@ -65,6 +64,7 @@ import com.geno1024.ai.gits.data.RecentRepository
 import com.geno1024.ai.gits.ui.CredentialsDialog
 import com.geno1024.ai.gits.ui.PromptDialog
 import com.geno1024.ai.gits.ui.repo.inverted
+import com.geno1024.ai.gits.ui.theme.MonoFontFamily
 import java.io.File
 
 /** What the folder picker was opened for, so the answer can be put to that use. */
@@ -301,7 +301,7 @@ fun HomeScreen(
                     text = forgetting.joinToString { it.name },
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    fontFamily = FontFamily.Monospace,
+                    fontFamily = MonoFontFamily,
                 )
             },
             text = { Text(stringResource(R.string.home_forget_note)) },
@@ -402,14 +402,14 @@ private fun RepositoryRow(
                 Text(
                     text = repository.name,
                     style = MaterialTheme.typography.titleMedium,
-                    fontFamily = FontFamily.Monospace,
+                    fontFamily = MonoFontFamily,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
                     text = repository.path,
                     style = MaterialTheme.typography.bodySmall,
-                    fontFamily = FontFamily.Monospace,
+                    fontFamily = MonoFontFamily,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -594,7 +594,7 @@ private fun ParentField(parent: File?, onPickParent: () -> Unit) {
             text = buildAnnotatedString {
                 val path = parent?.path
                 if (path != null) {
-                    withStyle(SpanStyle(fontFamily = FontFamily.Monospace)) { append(path) }
+                    withStyle(SpanStyle(fontFamily = MonoFontFamily)) { append(path) }
                 } else {
                     append(stringResource(R.string.create_no_parent))
                 }

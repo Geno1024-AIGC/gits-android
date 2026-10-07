@@ -72,7 +72,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -87,6 +86,7 @@ import com.geno1024.ai.gits.ui.CredentialsDialog
 import com.geno1024.ai.gits.ui.PromptDialog
 import com.geno1024.ai.gits.ui.keys.PassphraseDialog
 import android.app.Application
+import com.geno1024.ai.gits.ui.theme.MonoFontFamily
 import java.text.DateFormat
 import java.util.Date
 import androidx.compose.ui.platform.LocalContext
@@ -487,7 +487,7 @@ private fun WorkingTreePane(state: RepoUiState, viewModel: RepoViewModel) {
                                 text = "..",
                                 modifier = Modifier.weight(1f),
                                 style = MaterialTheme.typography.bodyMedium,
-                                fontFamily = FontFamily.Monospace,
+                                fontFamily = MonoFontFamily,
                             )
                         }
                     }
@@ -529,7 +529,7 @@ private fun WorkingTreePane(state: RepoUiState, viewModel: RepoViewModel) {
                         Text(
                             text = if (entry.directory) "${entry.name}/" else entry.name,
                             modifier = Modifier.weight(1f),
-                            fontFamily = FontFamily.Monospace,
+                            fontFamily = MonoFontFamily,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
@@ -929,7 +929,7 @@ private fun HistoryPane(state: RepoUiState, viewModel: RepoViewModel) {
                     Text(
                         text = entry.shortId.take(7),
                         style = MaterialTheme.typography.labelMedium,
-                        fontFamily = FontFamily.Monospace,
+                        fontFamily = MonoFontFamily,
                         color = MaterialTheme.colorScheme.primary,
                     )
                     Text(
@@ -978,7 +978,7 @@ private fun BranchesPane(state: RepoUiState, viewModel: RepoViewModel) {
                         Text(
                             branch.name,
                             style = MaterialTheme.typography.bodyLarge,
-                            fontFamily = FontFamily.Monospace,
+                            fontFamily = MonoFontFamily,
                         )
                         val tracking = branch.upstreamName
                             ?: "no upstream"
@@ -1055,13 +1055,13 @@ private fun RemotesPane(state: RepoUiState, viewModel: RepoViewModel) {
                             Text(
                                 remote.name,
                                 style = MaterialTheme.typography.bodyLarge,
-                                fontFamily = FontFamily.Monospace,
+                                fontFamily = MonoFontFamily,
                             )
                             remote.uris.forEach { uri ->
                                 Text(
                                     text = uri,
                                     style = MaterialTheme.typography.labelSmall,
-                                    fontFamily = FontFamily.Monospace,
+                                    fontFamily = MonoFontFamily,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
@@ -1211,7 +1211,7 @@ private fun ChangeRow(
         Text(
             text = change.path,
             modifier = Modifier.weight(1f),
-            fontFamily = FontFamily.Monospace,
+            fontFamily = MonoFontFamily,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
@@ -1361,7 +1361,7 @@ private fun TextDialog(
                         text = title,
                         modifier = Modifier.weight(1f),
                         style = MaterialTheme.typography.titleSmall,
-                        fontFamily = FontFamily.Monospace,
+                        fontFamily = MonoFontFamily,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -1405,7 +1405,7 @@ private fun TextDialog(
                                 AnnotatedString(content)
                             },
                             style = MaterialTheme.typography.bodySmall,
-                            fontFamily = FontFamily.Monospace,
+                            fontFamily = MonoFontFamily,
                         )
                     }
                 }

@@ -38,7 +38,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.AndroidViewModel
@@ -56,6 +55,7 @@ import com.geno1024.ai.gits.data.StoredAccount
 import com.geno1024.ai.gits.data.StoredKey
 import com.geno1024.ai.gits.git.Identity
 import com.geno1024.ai.gits.git.toCredentialHost
+import com.geno1024.ai.gits.ui.theme.MonoFontFamily
 import com.geno1024.ai.gits.ui.theme.ThemeMode
 import com.geno1024.ai.gits.ui.theme.ThemePreset
 import com.geno1024.ai.gits.ui.theme.ThemeSettings
@@ -476,14 +476,14 @@ private fun AccountsDialog(
                                 Text(
                                     account.host,
                                     style = MaterialTheme.typography.bodyMedium,
-                                    fontFamily = FontFamily.Monospace,
+                                    fontFamily = MonoFontFamily,
                                 )
                                 Text(
                                     text = account.username.ifEmpty {
                                         stringResource(R.string.accounts_no_name)
                                     },
                                     style = MaterialTheme.typography.bodySmall,
-                                    fontFamily = FontFamily.Monospace,
+                                    fontFamily = MonoFontFamily,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }

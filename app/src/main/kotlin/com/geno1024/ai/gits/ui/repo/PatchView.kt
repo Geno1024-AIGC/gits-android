@@ -11,9 +11,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.geno1024.ai.gits.ui.theme.MonoFontFamily
 
 /** What a line of a patch is doing there, which is what decides how it is drawn. */
 internal enum class DiffLineKind {
@@ -144,7 +144,7 @@ internal fun RenderedPatch(lines: List<DiffLine>, modifier: Modifier = Modifier)
                     DiffLineKind.FILE -> MaterialTheme.typography.titleSmall
                     else -> MaterialTheme.typography.bodySmall
                 },
-                fontFamily = FontFamily.Monospace,
+                fontFamily = MonoFontFamily,
                 fontWeight = if (line.kind == DiffLineKind.FILE) FontWeight.Bold else null,
                 color = when (line.kind) {
                     DiffLineKind.FILE -> MaterialTheme.colorScheme.primary
