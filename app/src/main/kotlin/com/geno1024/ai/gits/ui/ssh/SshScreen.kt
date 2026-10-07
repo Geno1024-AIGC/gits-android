@@ -36,6 +36,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -118,6 +122,7 @@ fun SshScreen(onBack: () -> Unit, viewModel: SshViewModel = viewModel()) {
                                 Text(
                                     text = key.name,
                                     style = MaterialTheme.typography.bodyLarge,
+                                    fontFamily = FontFamily.Monospace,
                                 )
                                 // What a person who has used this key would recognise,
                                 // in both forms OpenSSH prints: SHA-256, then the older
@@ -126,11 +131,13 @@ fun SshScreen(onBack: () -> Unit, viewModel: SshViewModel = viewModel()) {
                                     Text(
                                         text = fingerprints.sha256,
                                         style = MaterialTheme.typography.bodySmall,
+                                        fontFamily = FontFamily.Monospace,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                     Text(
                                         text = fingerprints.md5,
                                         style = MaterialTheme.typography.bodySmall,
+                                        fontFamily = FontFamily.Monospace,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                 }
@@ -156,9 +163,15 @@ fun SshScreen(onBack: () -> Unit, viewModel: SshViewModel = viewModel()) {
             title = { Text(stringResource(R.string.ssh_detected_title)) },
             text = {
                 Text(
-                    stringResource(R.string.ssh_detected_note) +
-                        "\n\n" + detected.joinToString() +
-                        "\n\n" + stringResource(R.string.ssh_replace_note),
+                    buildAnnotatedString {
+                        append(stringResource(R.string.ssh_detected_note))
+                        append("\n\n")
+                        withStyle(SpanStyle(fontFamily = FontFamily.Monospace)) {
+                            append(detected.joinToString())
+                        }
+                        append("\n\n")
+                        append(stringResource(R.string.ssh_replace_note))
+                    },
                 )
             },
             confirmButton = {
