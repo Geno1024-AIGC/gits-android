@@ -44,21 +44,6 @@ class AppSettings(private val settings: Settings) {
         )
 
     /**
-     * How the last install ended, kept so the update screen can show it.
-     *
-     * A session install outlives this process, so the notification is the only thing
-     * that survives to report the outcome. A person who taps Install and sees nothing
-     * afterwards has no way to tell a refusal from a build that never arrived, so the
-     * result is written where the app will read it on the next visit.
-     */
-    var lastInstallOutcome: String?
-        get() = settings.string(KEY_LAST_INSTALL)
-        set(value) = settings.write(
-            strings = if (value == null) emptyMap() else mapOf(KEY_LAST_INSTALL to value),
-            removed = if (value == null) setOf(KEY_LAST_INSTALL) else emptySet(),
-        )
-
-    /**
      * Which face the app is drawn in, as an id: the system's answer, light, or dark.
      *
      * Held as an id rather than a flag because there are three answers and a flag
@@ -115,7 +100,6 @@ class AppSettings(private val settings: Settings) {
         const val KEY_INITIAL_BRANCH = "repo.initialBranch"
         const val KEY_SOURCE = "update.source"
         const val KEY_DISMISSED = "update.dismissed"
-        const val KEY_LAST_INSTALL = "update.lastInstall"
         const val KEY_THEME_MODE = "theme.mode"
         const val KEY_THEME_PRESET = "theme.preset"
         const val KEY_THEME_COLORS = "theme.customColors"

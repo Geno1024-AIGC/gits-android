@@ -143,7 +143,6 @@
     <string name="create_no_parent">还没有位置 —— 点文件夹按钮来选一个。</string>
 
     <string name="update_title">更新</string>
-    <string name="update_last_outcome_heading">上次安装结果</string>
     <string name="update_checking">正在检查是否有新版本…</string>
     <string name="update_up_to_date">没有比这更新的已发布版本。</string>
     <string name="update_download">下载</string>

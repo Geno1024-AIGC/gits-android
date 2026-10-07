@@ -1,6 +1,5 @@
 package com.geno1024.ai.gits.update
 
-import android.app.Application
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -10,22 +9,20 @@ import android.content.Intent
 import android.content.pm.PackageInstaller
 import android.os.Build
 import com.geno1024.ai.gits.R
-import com.geno1024.ai.gits.data.AppSettings
 
 /**
  * Reports how an install ended, and asks for the confirmation the platform deferred.
  *
  * Two things land here. The platform's own session result, which only a package installer
  * session can produce, and [Intent.ACTION_MY_PACKAGE_REPLACED], which is what a build that
- * went in through the ordinary installer reports. Between them the update screen can say
- * what the last attempt came to either way, which is the difference between a record and
- * a guess.
+ * went in through the ordinary installer reports. Between them every install says how it
+ * ended, one way or another, which is the difference between a record and a guess.
  *
  * [PackageInstaller.STATUS_PENDING_USER_ACTION] is the status this receiver used to
  * swallow: committing a session does not put a confirmation on screen, it hands the app
  * an [Intent.EXTRA_INTENT] and waits to be asked. Android's own installer launches that
  * intent from here, and an app that does not is one whose Install button appears to do
- * nothing at all. It is not a failure, so it is not recorded as one.
+ * nothing at all. It is not a failure, so it is not reported as one.
  */
 class InstallReceiver : BroadcastReceiver() {
 
@@ -70,7 +67,7 @@ class InstallReceiver : BroadcastReceiver() {
      * The app is in the foreground when this lands, because the tap that started the
      * install is what brought the session about, so a plain start is allowed here. A
      * device that refuses it anyway must not be left with a session nobody can see: the
-     * refusal is recorded instead, which is the answer the update screen is for.
+     * refusal is reported instead, which is the answer a reader is owed either way.
      */
     private fun confirm(context: Context, intent: Intent) {
         val confirm = intent.confirmIntent()
@@ -84,17 +81,14 @@ class InstallReceiver : BroadcastReceiver() {
             }
     }
 
-    private fun record(context: Context, text: String) {
-        AppSettings.of(context.applicationContext as Application).lastInstallOutcome = text
-        notify(context, text)
-    }
-
     /**
+     * Tells the person how the install ended.
+     *
      * Notifying is a courtesy, never a requirement: without POST_NOTIFICATIONS the call
      * is dropped, and a receiver that throws after the install already ended would take
      * the only report of that install down with it.
      */
-    private fun notify(context: Context, text: String) {
+    private fun record(context: Context, text: String) {
         runCatching {
             val manager = context.getSystemService(NotificationManager::class.java)
             val channel = NotificationChannel(CHANNEL, context.getString(R.string.update_channel), IMPORTANCE)

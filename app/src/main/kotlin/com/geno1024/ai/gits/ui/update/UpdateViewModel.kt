@@ -15,7 +15,6 @@ import kotlinx.coroutines.withContext
 import java.io.File
 
 data class UpdateUiState(
-    val installed: String = "",
     val source: Updater.Source = Updater.SOURCES.first(),
     val available: Updater.Release? = null,
     val checking: Boolean = false,
@@ -23,7 +22,6 @@ data class UpdateUiState(
     val downloadedBytes: Long = 0,
     val totalBytes: Long = 0,
     val downloaded: File? = null,
-    val lastInstallOutcome: String? = null,
     val error: String? = null,
     val message: String? = null,
 )
@@ -40,11 +38,7 @@ class UpdateViewModel(application: Application) : AndroidViewModel(application) 
     private val settings = AppSettings.of(app)
 
     private val state = MutableStateFlow(
-        UpdateUiState(
-            installed = installedVersion(),
-            source = settings.updateSource,
-            lastInstallOutcome = settings.lastInstallOutcome,
-        ),
+        UpdateUiState(source = settings.updateSource),
     )
     val uiState: StateFlow<UpdateUiState> = state.asStateFlow()
 
@@ -154,27 +148,15 @@ class UpdateViewModel(application: Application) : AndroidViewModel(application) 
     fun dismissMessage() = state.update { it.copy(message = null) }
 
     /**
-     * Records what the last attempt came to, on screen and in storage alike.
+     * Puts what an attempt came to where the section shows its news.
      *
-     * Written on the way in as well as on the way out: a tap that never gets as far as
-     * the platform still has to leave something behind, or the row answers a question
-     * nobody asked and looks like the button it sits under does nothing.
+     * Both ways an attempt ends here count: a tap that finds nothing on the device
+     * able to open an APK, and the answer that comes back from the installer itself.
+     * The line is transient — an install that ends the process is reported by the
+     * receiver's notification instead.
      */
     fun noteInstallOutcome(outcome: String) {
-        settings.lastInstallOutcome = outcome
-        state.update { it.copy(lastInstallOutcome = outcome, message = null) }
-    }
-
-    /**
-     * Picks up an outcome recorded while this screen was not open.
-     *
-     * A session install kills the process, so its result lands in storage rather than in
-     * the state this ViewModel holds. Reading it here is what turns an install that
-     * silently did nothing into one with an answer waiting on the next visit.
-     */
-    fun refreshInstallOutcome() {
-        val stored = settings.lastInstallOutcome ?: return
-        state.update { it.copy(lastInstallOutcome = stored) }
+        state.update { it.copy(message = outcome) }
     }
 
     private fun installedVersion(): String = runCatching {

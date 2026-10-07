@@ -7,27 +7,34 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RadioButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.geno1024.ai.gits.R
@@ -50,25 +57,12 @@ fun Updates(
     modifier: Modifier = Modifier,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val lifecycleOwner = LocalLifecycleOwner.current
 
     // The ViewModel is kept by the navigation entry, so a return visit finds the same
     // one that was built the first time. Checking has to be asked for again from here,
     // or the section would show a stale answer while looking like it had just looked.
     LaunchedEffect(Unit) {
         viewModel.recheckIfStale()
-        viewModel.refreshInstallOutcome()
-    }
-
-    // The install itself happens on top of this section, and its outcome is written to
-    // storage by a receiver that has no view to write to. Reading it back on the way up
-    // is what stops the row being one navigation behind the tap that changed it.
-    DisposableEffect(lifecycleOwner) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) viewModel.refreshInstallOutcome()
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     Column(modifier = modifier.fillMaxWidth()) {
@@ -129,14 +123,10 @@ private fun UpdatePanel(
                 onDismissNotice = viewModel::dismiss,
             )
 
-            SourceHeading()
-            Updater.SOURCES.forEach { source ->
-                SourceRow(
-                    source = source,
-                    selected = source.id == state.source.id,
-                    onSelect = { viewModel.setSource(source) },
-                )
-            }
+            SourceDropdown(
+                source = state.source,
+                onSelect = viewModel::setSource,
+            )
         }
 
         state.error?.let { message ->
@@ -222,43 +212,54 @@ private fun ReleaseCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-
-        // Kept separate from the transient message: this one is the answer to the last
-        // attempt and stays put, because a refusal that was dismissed once would
-        // otherwise leave a button that appears to do nothing all over again. It is not
-        // coloured as an error any more because it no longer only holds errors: a tap
-        // that got as far as the platform writes here too, and a record that reads the
-        // same whether the answer was yes or no is one nobody can tell apart.
-        state.lastInstallOutcome?.let { outcome ->
-            Text(
-                text = stringResource(R.string.update_last_outcome_heading),
-                style = MaterialTheme.typography.titleSmall,
-            )
-            Text(
-                text = outcome,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
     }
 }
 
+/**
+ * Which host the download is taken from: one field to open rather than a column of
+ * radios, since the choice is between two mirrors and not a setting to weigh.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SourceHeading() {
-    Text(
-        text = stringResource(R.string.update_source_heading),
-        style = MaterialTheme.typography.titleSmall,
-    )
-}
-
-@Composable
-private fun SourceRow(source: Updater.Source, selected: Boolean, onSelect: () -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
+private fun SourceDropdown(
+    source: Updater.Source,
+    onSelect: (Updater.Source) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = it },
     ) {
-        RadioButton(selected = selected, onClick = onSelect)
-        Text(text = source.label, style = MaterialTheme.typography.bodyLarge)
+        OutlinedTextField(
+            value = source.label,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text(stringResource(R.string.update_source_heading)) },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
+                .exposedDropdownSize(),
+        )
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+        ) {
+            Updater.SOURCES.forEach { option ->
+                DropdownMenuItem(
+                    text = { Text(option.label) },
+                    onClick = {
+                        onSelect(option)
+                        expanded = false
+                    },
+                    trailingIcon = {
+                        if (option.id == source.id) {
+                            Icon(Icons.Default.Check, contentDescription = null)
+                        }
+                    },
+                )
+            }
+        }
     }
 }
 
