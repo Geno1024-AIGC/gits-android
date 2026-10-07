@@ -189,7 +189,8 @@
     <string name="home_folder_not_writable">本应用无法写入 %1$s。请改选它自己存储下的文件夹。</string>
 
     <string name="settings_title">设置</string>
-    <string name="settings_section_you">你</string>
+    <string name="settings_section_identity">身份</string>
+    <string name="settings_section_credentials">凭据</string>
     <string name="settings_section_app">应用</string>
     <string name="settings_identity">姓名和邮箱</string>
     <string name="settings_identity_unset">尚未设置</string>

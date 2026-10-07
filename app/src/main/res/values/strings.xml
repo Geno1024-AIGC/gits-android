@@ -197,7 +197,8 @@
     <string name="home_folder_not_writable">This app cannot write to %1$s. Pick a folder under its own storage instead.</string>
 
     <string name="settings_title">Settings</string>
-    <string name="settings_section_you">You</string>
+    <string name="settings_section_identity">Identity</string>
+    <string name="settings_section_credentials">Credentials</string>
     <string name="settings_section_app">App</string>
     <string name="settings_identity">Name and email</string>
     <string name="settings_identity_unset">Not set yet</string>

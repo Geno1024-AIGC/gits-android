@@ -1,23 +1,41 @@
 package com.geno1024.ai.gits.ui.settings
 
 import android.app.Application
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.CallSplit
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.SystemUpdate
+import androidx.compose.material.icons.filled.Terminal
+import androidx.compose.material.icons.filled.VpnKey
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -36,6 +54,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -95,115 +116,131 @@ fun SettingsScreen(
         title = stringResource(R.string.settings_title),
         onBack = onBack,
     ) { padding ->
-        LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {
-            item { SectionHeader(stringResource(R.string.settings_section_you)) }
-
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().padding(padding),
+            contentPadding = PaddingValues(bottom = 24.dp),
+        ) {
             item {
-                SettingsRow(
-                    title = stringResource(R.string.settings_identity),
-                    subtitle = state.identity?.let { "${it.name} <${it.email}>" }
-                        ?: stringResource(R.string.settings_identity_unset),
-                    onClick = { editingIdentity = true },
-                )
+                SectionHeader(stringResource(R.string.settings_section_identity))
+                SettingsCard {
+                    SettingsRow(
+                        icon = Icons.Default.Person,
+                        title = stringResource(R.string.settings_identity),
+                        subtitle = state.identity?.let { "${it.name} <${it.email}>" }
+                            ?: stringResource(R.string.settings_identity_unset),
+                        onClick = { editingIdentity = true },
+                    )
+                }
             }
 
             item {
-                SettingsRow(
-                    title = stringResource(R.string.keys_title),
-                    subtitle = when {
-                        state.keys.isEmpty() -> stringResource(R.string.settings_no_keys)
-                        state.selectedFingerprint == null ->
-                            stringResource(R.string.settings_keys_no_selection, state.keys.size)
+                SectionHeader(stringResource(R.string.settings_section_credentials))
+                SettingsCard {
+                    SettingsRow(
+                        icon = Icons.Default.VpnKey,
+                        title = stringResource(R.string.keys_title),
+                        subtitle = when {
+                            state.keys.isEmpty() -> stringResource(R.string.settings_no_keys)
+                            state.selectedFingerprint == null ->
+                                stringResource(R.string.settings_keys_no_selection, state.keys.size)
 
-                        else -> stringResource(R.string.settings_keys_selected, state.keys.size)
-                    },
-                    onClick = onOpenKeys,
-                )
+                            else -> stringResource(R.string.settings_keys_selected, state.keys.size)
+                        },
+                        onClick = onOpenKeys,
+                    )
+                    RowDivider()
+                    SettingsRow(
+                        icon = Icons.Default.Cloud,
+                        title = stringResource(R.string.accounts_section),
+                        subtitle = if (state.accounts.isEmpty()) {
+                            stringResource(R.string.settings_accounts_none)
+                        } else {
+                            state.accounts.joinToString { it.host }
+                        },
+                        monoSubtitle = true,
+                        onClick = { editingAccounts = true },
+                    )
+                    RowDivider()
+                    SettingsRow(
+                        icon = Icons.Default.Terminal,
+                        title = stringResource(R.string.ssh_title),
+                        subtitle = if (state.sshKeys.isEmpty()) {
+                            stringResource(R.string.settings_no_keys)
+                        } else {
+                            stringResource(R.string.settings_keys_selected, state.sshKeys.size)
+                        },
+                        onClick = onOpenSsh,
+                    )
+                }
             }
 
             item {
-                SettingsRow(
-                    title = stringResource(R.string.accounts_section),
-                    subtitle = if (state.accounts.isEmpty()) {
-                        stringResource(R.string.settings_accounts_none)
-                    } else {
-                        state.accounts.joinToString { it.host }
-                    },
-                    onClick = { editingAccounts = true },
-                )
+                SectionHeader(stringResource(R.string.settings_section_repositories))
+                SettingsCard {
+                    SettingsRow(
+                        icon = Icons.Default.CallSplit,
+                        title = stringResource(R.string.settings_default_branch),
+                        subtitle = state.defaultBranch,
+                        monoSubtitle = true,
+                        onClick = { editingBranch = true },
+                    )
+                }
             }
 
             item {
-                SettingsRow(
-                    title = stringResource(R.string.ssh_title),
-                    subtitle = if (state.sshKeys.isEmpty()) {
-                        stringResource(R.string.settings_no_keys)
-                    } else {
-                        stringResource(R.string.settings_keys_selected, state.sshKeys.size)
-                    },
-                    onClick = onOpenSsh,
-                )
-            }
-
-            item { SectionHeader(stringResource(R.string.settings_section_repositories)) }
-
-            item {
-                SettingsRow(
-                    title = stringResource(R.string.settings_default_branch),
-                    subtitle = state.defaultBranch,
-                    onClick = { editingBranch = true },
-                )
-            }
-
-            item { SectionHeader(stringResource(R.string.settings_appearance)) }
-
-            item {
-                SettingsRow(
-                    title = stringResource(R.string.settings_theme),
-                    subtitle = stringResource(theme.mode.label()),
-                    onClick = { choosingThemeMode = true },
-                )
-            }
-
-            item {
-                SettingsRow(
-                    title = stringResource(R.string.settings_theme_preset),
-                    subtitle = stringResource(theme.preset.label()),
-                    onClick = { choosingPreset = true },
-                )
-            }
-
-            // The colours a custom scheme is mixed from are only worth showing while a
-            // custom scheme is the one in use.
-            items(
-                if (theme.preset == ThemePreset.CUSTOM) CUSTOM_COLOR_SLOTS else emptyList(),
-                key = { (slot, _) -> slot },
-            ) { (slot, name) ->
-                SettingsRow(
-                    title = stringResource(name),
-                    subtitle = theme.colors[slot]
-                        ?.let { colorHex(it) }
-                        ?: stringResource(R.string.theme_custom_unset),
-                    onClick = { choosingColor = slot },
-                )
-            }
-
-            item { SectionHeader(stringResource(R.string.settings_section_app)) }
-
-            item {
-                SettingsRow(
-                    title = stringResource(R.string.update_title),
-                    subtitle = stringResource(R.string.settings_update_subtitle),
-                    onClick = onOpenUpdates,
-                )
+                SectionHeader(stringResource(R.string.settings_appearance))
+                SettingsCard {
+                    SettingsRow(
+                        icon = Icons.Default.DarkMode,
+                        title = stringResource(R.string.settings_theme),
+                        subtitle = stringResource(theme.mode.label()),
+                        onClick = { choosingThemeMode = true },
+                    )
+                    RowDivider()
+                    SettingsRow(
+                        icon = Icons.Default.Palette,
+                        title = stringResource(R.string.settings_theme_preset),
+                        subtitle = stringResource(theme.preset.label()),
+                        onClick = { choosingPreset = true },
+                    )
+                    // The colours a custom scheme is mixed from are only worth showing
+                    // while a custom scheme is the one in use.
+                    if (theme.preset == ThemePreset.CUSTOM) {
+                        CUSTOM_COLOR_SLOTS.forEach { (slot, name) ->
+                            RowDivider()
+                            SettingsRow(
+                                icon = Icons.Default.Palette,
+                                title = stringResource(name),
+                                subtitle = theme.colors[slot]
+                                    ?.let { colorHex(it) }
+                                    ?: stringResource(R.string.theme_custom_unset),
+                                swatch = theme.colors[slot],
+                                monoSubtitle = true,
+                                onClick = { choosingColor = slot },
+                            )
+                        }
+                    }
+                }
             }
 
             item {
-                SettingsRow(
-                    title = stringResource(R.string.about_title),
-                    subtitle = BuildConfig.VERSION_NAME,
-                    onClick = onOpenAbout,
-                )
+                SectionHeader(stringResource(R.string.settings_section_app))
+                SettingsCard {
+                    SettingsRow(
+                        icon = Icons.Default.SystemUpdate,
+                        title = stringResource(R.string.update_title),
+                        subtitle = stringResource(R.string.settings_update_subtitle),
+                        onClick = onOpenUpdates,
+                    )
+                    RowDivider()
+                    SettingsRow(
+                        icon = Icons.Default.Info,
+                        title = stringResource(R.string.about_title),
+                        subtitle = BuildConfig.VERSION_NAME,
+                        monoSubtitle = true,
+                        onClick = onOpenAbout,
+                    )
+                }
             }
         }
     }
@@ -312,21 +349,80 @@ fun SectionHeader(title: String) {
     )
 }
 
+/**
+ * The sheet a section's rows sit on: one card under each header, held apart from
+ * the screen by its own tone rather than by a shadow.
+ */
 @Composable
-private fun SettingsRow(title: String, subtitle: String, onClick: () -> Unit) {
+private fun SettingsCard(content: @Composable ColumnScope.() -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+    ) {
+        Column(content = content)
+    }
+}
+
+/** Between two rows, starting under their text so the icons stand clear of it. */
+@Composable
+private fun RowDivider() {
+    HorizontalDivider(modifier = Modifier.padding(start = 68.dp))
+}
+
+/**
+ * One row of a section: what it configures, then what it is currently set to,
+ * the whole row a tap target. [swatch] paints the leading disc with a colour
+ * instead of an icon, and [monoSubtitle] sets a value that is a name or a path
+ * in the face it is read in.
+ */
+@Composable
+private fun SettingsRow(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    swatch: Long? = null,
+    monoSubtitle: Boolean = false,
+    onClick: () -> Unit,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 14.dp),
+            .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(
+                    if (swatch == null) {
+                        MaterialTheme.colorScheme.surfaceVariant
+                    } else {
+                        Color(swatch.toInt())
+                    },
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (swatch == null) {
+                Icon(
+                    icon,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        Spacer(modifier = Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(title, style = MaterialTheme.typography.bodyLarge)
             Text(
                 text = subtitle,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontFamily = if (monoSubtitle) MonoFontFamily else null,
             )
         }
         Icon(
