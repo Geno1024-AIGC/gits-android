@@ -40,7 +40,6 @@
     <string name="ssh_detected_title">Import SSH keys?</string>
     <string name="ssh_detected_note">Keys were found in /sdcard/.ssh. Do you want to import them?</string>
     <string name="ssh_replace_note">A key with the same name is replaced.</string>
-    <string name="keys_section">Signing keys</string>
     <string name="accounts_section">Signed-in hosts</string>
     <string name="accounts_no_name">no name given</string>
     <string name="action_forget_all_accounts">Sign out everywhere</string>

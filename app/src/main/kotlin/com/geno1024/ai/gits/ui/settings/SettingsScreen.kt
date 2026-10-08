@@ -258,6 +258,7 @@ fun SettingsScreen(
                 editingAccounts = false
             },
             onRemove = viewModel::removeAccount,
+            onForgetAll = viewModel::forgetAllAccounts,
         )
     }
 
@@ -547,6 +548,7 @@ private fun AccountsDialog(
     onDismiss: () -> Unit,
     onAdd: (String, String, CharArray) -> Unit,
     onRemove: (String) -> Unit,
+    onForgetAll: () -> Unit,
 ) {
     var address by remember { mutableStateOf("") }
     var username by remember { mutableStateOf("") }
@@ -595,6 +597,12 @@ private fun AccountsDialog(
                             }
                         }
                     }
+                    // The way out of every account sits with the list it empties,
+                    // rather than in another screen that happens to show it too.
+                    TextButton(
+                        onClick = onForgetAll,
+                        modifier = Modifier.align(Alignment.End),
+                    ) { Text(stringResource(R.string.action_forget_all_accounts)) }
                 }
 
                 HorizontalDivider()
@@ -715,6 +723,12 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     fun removeAccount(host: String) {
         credentialStore.forget(host)
+        refresh()
+    }
+
+    /** Lets every stored account go at once, for when a machine is handed over. */
+    fun forgetAllAccounts() {
+        credentialStore.forgetAll()
         refresh()
     }
 }

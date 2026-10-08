@@ -40,7 +40,6 @@
     <string name="ssh_detected_title">导入 SSH 私钥？</string>
     <string name="ssh_detected_note">在 /sdcard/.ssh 中发现了私钥，要不要导入？</string>
     <string name="ssh_replace_note">同名的私钥会被替换。</string>
-    <string name="keys_section">签名密钥</string>
     <string name="accounts_section">已登录的主机</string>
     <string name="accounts_no_name">未提供名称</string>
     <string name="action_forget_all_accounts">从所有地方退出登录</string>

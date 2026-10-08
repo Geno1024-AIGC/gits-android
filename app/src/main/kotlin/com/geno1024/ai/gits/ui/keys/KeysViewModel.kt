@@ -5,8 +5,6 @@ import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.geno1024.ai.gits.data.KeyStore
-import com.geno1024.ai.gits.data.CredentialStore
-import com.geno1024.ai.gits.data.StoredAccount
 import com.geno1024.ai.gits.data.StoredKey
 import com.geno1024.ai.gits.openpgp.KeyAlgorithm
 import kotlinx.coroutines.Dispatchers
@@ -23,7 +21,6 @@ data class KeysUiState(
     val error: String? = null,
     val message: String? = null,
     val canSign: Boolean = false,
-    val accounts: List<StoredAccount> = emptyList(),
     val selected: String? = null,
 )
 
@@ -37,7 +34,6 @@ data class KeysUiState(
 class KeysViewModel(application: Application) : AndroidViewModel(application) {
 
     private val keyStore = KeyStore.getInstance(application)
-    private val credentials = CredentialStore.getInstance(application)
 
     private val state = MutableStateFlow(KeysUiState())
     val uiState: StateFlow<KeysUiState> = state.asStateFlow()
@@ -48,21 +44,14 @@ class KeysViewModel(application: Application) : AndroidViewModel(application) {
 
     fun refresh() = viewModelScope.launch {
         val keys = withContext(Dispatchers.IO) { keyStore.keys() }
-        val accounts = withContext(Dispatchers.IO) { credentials.accounts() }
         state.update {
             it.copy(
                 keys = keys,
                 canSign = keys.any(StoredKey::canSign),
-                accounts = accounts,
                 selected = keyStore.selected,
             )
         }
     }
-
-    fun forgetAccount(account: StoredAccount) =
-        run("Could not forget ${account.host}") { credentials.forget(account.host) }
-
-    fun forgetAllAccounts() = run("Could not forget the accounts") { credentials.forgetAll() }
 
     fun generate(name: String, email: String, algorithm: KeyAlgorithm, passphrase: CharArray) =
         run("Could not create the key") { keyStore.generate("$name <$email>", algorithm, passphrase) }

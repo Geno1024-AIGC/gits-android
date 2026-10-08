@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -48,7 +47,6 @@ import android.net.Uri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.geno1024.ai.gits.R
-import com.geno1024.ai.gits.data.StoredAccount
 import com.geno1024.ai.gits.data.StoredKey
 import com.geno1024.ai.gits.openpgp.KeyAlgorithm
 import com.geno1024.ai.gits.ui.theme.MonoFontFamily
@@ -123,7 +121,7 @@ fun KeysScreen(onBack: () -> Unit, viewModel: KeysViewModel = viewModel()) {
         },
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-            if (state.keys.isEmpty() && state.accounts.isEmpty()) {
+            if (state.keys.isEmpty()) {
                 Text(
                     text = stringResource(R.string.keys_empty),
                     style = MaterialTheme.typography.bodyMedium,
@@ -132,9 +130,6 @@ fun KeysScreen(onBack: () -> Unit, viewModel: KeysViewModel = viewModel()) {
                 )
             } else {
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
-                    item {
-                        SectionHeader(stringResource(R.string.keys_section))
-                    }
                     items(state.keys, key = { it.fingerprintHex }) { key ->
                         KeyRow(
                             key = key,
@@ -146,22 +141,6 @@ fun KeysScreen(onBack: () -> Unit, viewModel: KeysViewModel = viewModel()) {
                             onForget = { viewModel.forget(key) },
                         )
                         HorizontalDivider()
-                    }
-                    if (state.accounts.isNotEmpty()) {
-                        item { SectionHeader(stringResource(R.string.accounts_section)) }
-                        items(state.accounts, key = { it.host }) { account ->
-                            AccountRow(
-                                account = account,
-                                onForget = { viewModel.forgetAccount(account) },
-                            )
-                            HorizontalDivider()
-                        }
-                        item {
-                            TextButton(
-                                onClick = viewModel::forgetAllAccounts,
-                                modifier = Modifier.padding(horizontal = 8.dp),
-                            ) { Text(stringResource(R.string.action_forget_all_accounts)) }
-                        }
                     }
                 }
             }
@@ -239,35 +218,6 @@ fun KeysScreen(onBack: () -> Unit, viewModel: KeysViewModel = viewModel()) {
 }
 
 @Composable
-private fun SectionHeader(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.titleSmall,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-    )
-}
-
-/** A host the app holds a token for, and the name that goes with it. */
-@Composable
-private fun AccountRow(account: StoredAccount, onForget: () -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(account.host, style = MaterialTheme.typography.bodyLarge)
-            Text(
-                text = account.username.ifBlank { stringResource(R.string.accounts_no_name) },
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        TextButton(onClick = onForget) { Text(stringResource(R.string.action_forget)) }
-    }
-}
-
-@Composable
 private fun KeyRow(
     key: StoredKey,
     signing: Boolean,
@@ -282,44 +232,47 @@ private fun KeyRow(
         modifier = Modifier.fillMaxWidth().padding(16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Card(modifier = Modifier.weight(1f)) {
-            Column(modifier = Modifier.padding(12.dp)) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = key.userId.ifBlank { stringResource(R.string.keys_unnamed) },
+                style = MaterialTheme.typography.bodyLarge,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = key.fingerprintHex.chunked(4).joinToString(" "),
+                style = MaterialTheme.typography.labelSmall,
+                fontFamily = MonoFontFamily,
+            )
+            Text(
+                text = buildString {
+                    append(key.algorithm?.name ?: stringResource(R.string.keys_other_algorithm))
+                    if (key.locked) append(" · " + stringResource(R.string.keys_locked))
+                    // The separators stay in the code so a translator only ever has
+                    // to hand back the words, not decide where they sit.
+                    if (key.canSign) append(" · " + stringResource(R.string.keys_can_sign))
+                    if (!key.isPassphraseProtected) {
+                        append(" · " + stringResource(R.string.keys_no_passphrase))
+                    }
+                },
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            if (signing) {
                 Text(
-                    text = key.userId.ifBlank { stringResource(R.string.keys_unnamed) },
-                    style = MaterialTheme.typography.bodyLarge,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    text = key.fingerprintHex.chunked(4).joinToString(" "),
+                    text = stringResource(R.string.keys_signs_with),
                     style = MaterialTheme.typography.labelSmall,
-                    fontFamily = MonoFontFamily,
+                    color = MaterialTheme.colorScheme.primary,
                 )
-                Text(
-                    text = buildString {
-                        append(key.algorithm?.name ?: stringResource(R.string.keys_other_algorithm))
-                        if (key.locked) append(" · " + stringResource(R.string.keys_locked))
-                        // The separators stay in the code so a translator only ever has
-                        // to hand back the words, not decide where they sit.
-                        if (key.canSign) append(" · " + stringResource(R.string.keys_can_sign))
-                        if (!key.isPassphraseProtected) {
-                            append(" · " + stringResource(R.string.keys_no_passphrase))
-                        }
-                    },
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                if (signing) {
-                    Text(
-                        text = stringResource(R.string.keys_signs_with),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                }
             }
         }
         Box {
-            TextButton(onClick = { menu = true }) { Text(KEY_MENU_GLYPH) }
+            IconButton(onClick = { menu = true }) {
+                Icon(
+                    painterResource(R.drawable.ic_more_vert),
+                    contentDescription = null,
+                )
+            }
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                 // Unlocking comes first because a locked key offers nothing else worth
                 // doing: it cannot sign until the passphrase has been given.
@@ -576,5 +529,3 @@ fun PassphraseDialog(
     )
 }
 
-/** Three dots, used as a menu affordance. Not a word, so not translated. */
-private const val KEY_MENU_GLYPH = "\u22EF"
