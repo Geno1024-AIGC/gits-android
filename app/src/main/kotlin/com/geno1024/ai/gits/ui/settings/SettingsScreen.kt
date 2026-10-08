@@ -47,9 +47,7 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -66,6 +64,7 @@ import com.geno1024.ai.gits.data.StoredAccount
 import com.geno1024.ai.gits.data.StoredKey
 import com.geno1024.ai.gits.git.Identity
 import com.geno1024.ai.gits.git.toCredentialHost
+import com.geno1024.ai.gits.ui.CommandNote
 import com.geno1024.ai.gits.ui.theme.MonoFontFamily
 import com.geno1024.ai.gits.ui.theme.ThemeMode
 import com.geno1024.ai.gits.ui.theme.ThemePreset
@@ -416,25 +415,6 @@ fun SettingsRow(
     }
 }
 
-/**
- * The option a field stands for, set at the end of the line the field ends on.
- *
- * The value lands under a name git already knows, and saying which one is here means
- * the answer can be found — or checked — without leaving the field that asked for it.
- */
-@Composable
-private fun ConfigHint(text: String) {
-    Text(
-        text = text,
-        modifier = Modifier.fillMaxWidth(),
-        textAlign = TextAlign.End,
-        fontStyle = FontStyle.Italic,
-        fontFamily = MonoFontFamily,
-        style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
-}
-
 @Composable
 private fun IdentityDialog(
     existing: Identity?,
@@ -455,7 +435,7 @@ private fun IdentityDialog(
                     onValueChange = { name = it },
                     label = { Text(stringResource(R.string.field_name)) },
                     singleLine = true,
-                    supportingText = { ConfigHint("config user.name") },
+                    supportingText = { CommandNote("config user.name") },
                 )
                 OutlinedTextField(
                     value = email,
@@ -463,7 +443,7 @@ private fun IdentityDialog(
                     label = { Text(stringResource(R.string.field_email)) },
                     singleLine = true,
                     isError = email.isNotEmpty() && !email.contains('@'),
-                    supportingText = { ConfigHint("config user.email") },
+                    supportingText = { CommandNote("config user.email") },
                 )
                 Text(
                     text = stringResource(R.string.settings_identity_note),
@@ -511,7 +491,7 @@ private fun DefaultBranchDialog(
                     label = { Text(stringResource(R.string.field_initial_branch)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
-                    supportingText = { ConfigHint("config init.defaultBranch") },
+                    supportingText = { CommandNote("config init.defaultBranch") },
                 )
                 Text(
                     text = stringResource(R.string.settings_default_branch_note),

@@ -70,6 +70,8 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.geno1024.ai.gits.R
 import com.geno1024.ai.gits.git.WorkingChange
+import com.geno1024.ai.gits.ui.CommandLabel
+import com.geno1024.ai.gits.ui.CommandNote
 import com.geno1024.ai.gits.ui.CredentialsDialog
 import com.geno1024.ai.gits.ui.PromptDialog
 import com.geno1024.ai.gits.ui.keys.PassphraseDialog
@@ -289,17 +291,22 @@ fun RepoScreen(path: String, onBack: () -> Unit, onOpenSettings: () -> Unit) {
         // are one question in three parts rather than three unrelated actions.
         AlertDialog(
             onDismissRequest = { stashPicker = false },
-            title = { Text(stringResource(R.string.repo_stash_action)) },
+            title = {
+                Column {
+                    Text(stringResource(R.string.repo_stash_action))
+                    CommandNote("stash")
+                }
+            },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     TextButton(onClick = { stashPicker = false; stashAsk = StashAsk.STASH }) {
-                        Text(stringResource(R.string.repo_stash))
+                        CommandLabel(stringResource(R.string.repo_stash), "stash")
                     }
                     TextButton(onClick = { stashPicker = false; stashAsk = StashAsk.POP }) {
-                        Text(stringResource(R.string.repo_stash_pop))
+                        CommandLabel(stringResource(R.string.repo_stash_pop), "stash pop")
                     }
                     TextButton(onClick = { stashPicker = false; viewModel.openStashes() }) {
-                        Text(stringResource(R.string.repo_stashes_action))
+                        CommandLabel(stringResource(R.string.repo_stashes_action), "stash list")
                     }
                 }
             },
@@ -315,11 +322,11 @@ fun RepoScreen(path: String, onBack: () -> Unit, onOpenSettings: () -> Unit) {
         AlertDialog(
             onDismissRequest = { stashAsk = null },
             title = {
-                Text(
-                    stringResource(
-                        if (ask == StashAsk.STASH) R.string.repo_stash else R.string.repo_stash_pop,
-                    ),
-                )
+                val stash = ask == StashAsk.STASH
+                Column {
+                    Text(stringResource(if (stash) R.string.repo_stash else R.string.repo_stash_pop))
+                    CommandNote(if (stash) "stash" else "stash pop")
+                }
             },
             text = {
                 Text(
@@ -562,9 +569,23 @@ private fun FileActions(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         // Ordered so the one taken most often, the commit, sits nearest the thumb.
-        ActionButton(icon = painterResource(R.drawable.ic_note_add), label = stringResource(R.string.action_new), onClick = onNew)
-        ActionButton(icon = painterResource(R.drawable.ic_save), label = stringResource(R.string.repo_stash_action), onClick = onStash)
-        ActionButton(icon = painterResource(R.drawable.ic_commit), label = stringResource(R.string.repo_commit_go), onClick = onCommit)
+        ActionButton(
+            icon = painterResource(R.drawable.ic_note_add),
+            label = stringResource(R.string.action_new),
+            onClick = onNew,
+        )
+        ActionButton(
+            icon = painterResource(R.drawable.ic_save),
+            label = stringResource(R.string.repo_stash_action),
+            command = "stash",
+            onClick = onStash,
+        )
+        ActionButton(
+            icon = painterResource(R.drawable.ic_commit),
+            label = stringResource(R.string.repo_commit_go),
+            command = "commit",
+            onClick = onCommit,
+        )
     }
 }
 
@@ -588,6 +609,7 @@ private fun StageActions(state: RepoUiState, viewModel: RepoViewModel) {
             ActionButton(
                 icon = painterResource(R.drawable.ic_add),
                 label = stringResource(R.string.repo_stage),
+                command = "add",
                 onClick = viewModel::stageSelected,
             )
         }
@@ -595,6 +617,7 @@ private fun StageActions(state: RepoUiState, viewModel: RepoViewModel) {
             ActionButton(
                 icon = painterResource(R.drawable.ic_remove),
                 label = stringResource(R.string.repo_unstage),
+                command = "restore --staged",
                 onClick = viewModel::unstageSelected,
             )
         }
@@ -603,11 +626,11 @@ private fun StageActions(state: RepoUiState, viewModel: RepoViewModel) {
 
 /** One labelled button in the corner. The label is the point, so it is not hidden from a screen reader. */
 @Composable
-private fun ActionButton(icon: Painter, label: String, onClick: () -> Unit) {
+private fun ActionButton(icon: Painter, label: String, command: String? = null, onClick: () -> Unit) {
     ExtendedFloatingActionButton(
         onClick = onClick,
         icon = { Icon(icon, contentDescription = null) },
-        text = { Text(label) },
+        text = { if (command != null) CommandLabel(label, command) else Text(label) },
     )
 }
 
@@ -656,6 +679,7 @@ private fun CommitDialog(
                     value = message,
                     onValueChange = onMessageChange,
                     label = { Text(stringResource(R.string.repo_commit_message)) },
+                    supportingText = { CommandNote("commit -m") },
                     modifier = Modifier.fillMaxWidth(),
                 )
 
@@ -722,7 +746,7 @@ private fun CommitDialog(
                 // happen at once, and the reason above says when that is needed.
                 if (state.unstaged.isNotEmpty()) {
                     TextButton(onClick = viewModel::stageAll) {
-                        Text(stringResource(R.string.repo_commit_stage_all))
+                        CommandLabel(stringResource(R.string.repo_commit_stage_all), "add -A")
                     }
                 }
             }
@@ -739,7 +763,7 @@ private fun CommitDialog(
                 // One answer to "why is this off", so the button and the reason beneath
                 // it can never disagree.
                 enabled = state.canCommit && state.commitBlock(message) == null,
-            ) { Text(stringResource(R.string.repo_commit_go)) }
+            ) { CommandLabel(stringResource(R.string.repo_commit_go), "commit") }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
@@ -789,7 +813,7 @@ private fun StashesDialog(state: RepoUiState, viewModel: RepoViewModel) {
                                 )
                             }
                             TextButton(onClick = { viewModel.restoreStash(stash.ref) }) {
-                                Text(stringResource(R.string.repo_stash_restore))
+                                CommandLabel(stringResource(R.string.repo_stash_restore), "stash pop")
                             }
                             IconButton(onClick = { viewModel.dropStash(stash.ref) }) {
                                 Icon(
@@ -874,12 +898,14 @@ private fun IdentityDialog(
                     value = name,
                     onValueChange = { name = it },
                     label = { Text("Name") },
+                    supportingText = { CommandNote("config user.name") },
                     singleLine = true,
                 )
                 OutlinedTextField(
                     value = email,
                     onValueChange = { email = it },
                     label = { Text("Email") },
+                    supportingText = { CommandNote("config user.email") },
                     singleLine = true,
                 )
             }
@@ -1002,6 +1028,7 @@ private fun BranchesPane(state: RepoUiState, viewModel: RepoViewModel) {
                     value = name,
                     onValueChange = { name = it },
                     label = { Text("Name") },
+                    supportingText = { CommandNote("branch") },
                     singleLine = true,
                 )
             },
@@ -1074,24 +1101,30 @@ private fun RemotesPane(state: RepoUiState, viewModel: RepoViewModel) {
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             OutlinedButton(onClick = { adding = true }) {
-                Text(stringResource(R.string.repo_remote_add_action))
+                CommandLabel(stringResource(R.string.repo_remote_add_action), "remote add")
             }
             OutlinedButton(onClick = viewModel::pull) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    Icon(painterResource(R.drawable.ic_cloud_download), contentDescription = null)
-                    Text(stringResource(R.string.repo_remote_pull))
+                Column {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        Icon(painterResource(R.drawable.ic_cloud_download), contentDescription = null)
+                        Text(stringResource(R.string.repo_remote_pull))
+                    }
+                    CommandNote("pull", Modifier.align(Alignment.End))
                 }
             }
             OutlinedButton(onClick = viewModel::push) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    Icon(painterResource(R.drawable.ic_cloud_upload), contentDescription = null)
-                    Text(stringResource(R.string.repo_remote_push))
+                Column {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        Icon(painterResource(R.drawable.ic_cloud_upload), contentDescription = null)
+                        Text(stringResource(R.string.repo_remote_push))
+                    }
+                    CommandNote("push", Modifier.align(Alignment.End))
                 }
             }
         }
@@ -1258,6 +1291,7 @@ private fun RenameDialog(action: EntryAction.Rename, viewModel: RepoViewModel) {
                 value = name,
                 onValueChange = { name = it },
                 label = { Text(stringResource(R.string.repo_files_rename_label)) },
+                supportingText = { CommandNote("mv") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )

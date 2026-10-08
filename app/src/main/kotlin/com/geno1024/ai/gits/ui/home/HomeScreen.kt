@@ -53,6 +53,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.geno1024.ai.gits.R
 import com.geno1024.ai.gits.data.DocumentTree
 import com.geno1024.ai.gits.data.RecentRepository
+import com.geno1024.ai.gits.ui.CommandLabel
+import com.geno1024.ai.gits.ui.CommandNote
 import com.geno1024.ai.gits.ui.CredentialsDialog
 import com.geno1024.ai.gits.ui.PromptDialog
 import com.geno1024.ai.gits.ui.repo.inverted
@@ -231,7 +233,7 @@ fun HomeScreen(
                     }
                     DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                         DropdownMenuItem(
-                            text = { Text(stringResource(R.string.create_repository_action)) },
+                            text = { CommandLabel(stringResource(R.string.create_repository_action), "init") },
                             leadingIcon = { Icon(painterResource(R.drawable.ic_create_new_folder), contentDescription = null) },
                             onClick = {
                                 menu = false
@@ -239,7 +241,7 @@ fun HomeScreen(
                             },
                         )
                         DropdownMenuItem(
-                            text = { Text(stringResource(R.string.action_clone_repository)) },
+                            text = { CommandLabel(stringResource(R.string.action_clone_repository), "clone") },
                             leadingIcon = { Icon(painterResource(R.drawable.ic_cloud_download), contentDescription = null) },
                             onClick = {
                                 menu = false
@@ -477,6 +479,7 @@ private fun CreateRepositoryDialog(
                     value = branch,
                     onValueChange = { branch = it },
                     label = { Text(stringResource(R.string.field_initial_branch)) },
+                    supportingText = { CommandNote("config init.defaultBranch") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -549,6 +552,7 @@ private fun CloneRepositoryDialog(
                     value = branch,
                     onValueChange = { branch = it },
                     label = { Text(stringResource(R.string.field_clone_branch)) },
+                    supportingText = { CommandNote("clone --branch") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -561,7 +565,7 @@ private fun CloneRepositoryDialog(
                     onClone(address, place, branch)
                 },
                 enabled = address.isNotBlank() && target != null,
-            ) { Text(stringResource(R.string.clone_action)) }
+            ) { CommandLabel(stringResource(R.string.clone_action), "clone") }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }

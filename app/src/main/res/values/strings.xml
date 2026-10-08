@@ -15,7 +15,7 @@
     <string name="action_pull">Pull</string>
     <string name="action_push">Push</string>
     <string name="action_create_repository">New repository</string>
-    <string name="create_repository_action">New repository (init)</string>
+    <string name="create_repository_action">New repository</string>
     <string name="action_remove_remote">Remove this remote</string>
 
     <string name="error_title">Something went wrong</string>
@@ -90,8 +90,8 @@
     <string name="repo_files_only_changed">Changes only</string>
     <string name="repo_files_close">Close this file</string>
     <string name="repo_changes_none">Nothing has changed.</string>
-    <string name="repo_stage">Stage (add)</string>
-    <string name="repo_unstage" tools:ignore="TypographyDashes">Unstage (restore --staged)</string>
+    <string name="repo_stage">Stage</string>
+    <string name="repo_unstage">Unstage</string>
     <string name="selection_all">All</string>
     <string name="selection_none">None</string>
     <string name="selection_invert">Invert</string>
@@ -104,13 +104,13 @@
     <string name="repo_commit_busy">Something is still running; try again in a moment.</string>
     <string name="repo_commit_not_staged">Nothing is staged yet.</string>
     <string name="repo_commit_message_empty">A commit needs a message.</string>
-    <string name="repo_commit_stage_all">Stage everything (add -A)</string>
-    <string name="repo_stash">Stash changes (stash)</string>
-    <string name="repo_stash_pop">Restore the newest stash (stash pop)</string>
+    <string name="repo_commit_stage_all">Stage everything</string>
+    <string name="repo_stash">Stash changes</string>
+    <string name="repo_stash_pop">Restore the newest stash</string>
     <string name="repo_stash_ask">The changes go into the stash, and can be taken back out at any time.</string>
     <string name="repo_stash_pop_ask">The newest stash comes back into the working tree, and stops if that would conflict.</string>
     <string name="repo_stashes">Stashes</string>
-    <string name="repo_stashes_action">Stashes (stash list)</string>
+    <string name="repo_stashes_action">Stashes</string>
     <string name="repo_stash_action">Stash</string>
     <string name="repo_stash_empty">No stashes yet.</string>
     <string name="repo_stash_nothing">There was nothing to stash.</string>
@@ -118,13 +118,13 @@
     <string name="repo_stash_made">Stashed.</string>
     <string name="repo_stash_restored">Restored.</string>
     <string name="repo_stash_dropped">Dropped.</string>
-    <string name="repo_stash_restore">Restore (stash pop)</string>
+    <string name="repo_stash_restore">Restore</string>
     <string name="repo_stash_drop">Drop this stash</string>
     <string name="repo_remote_none">This repository has no remotes.</string>
     <string name="repo_remote_add">Add remote</string>
-    <string name="repo_remote_add_action">Add remote (remote add)</string>
-    <string name="repo_remote_pull">Pull (pull)</string>
-    <string name="repo_remote_push">Push (push)</string>
+    <string name="repo_remote_add_action">Add remote</string>
+    <string name="repo_remote_pull">Pull</string>
+    <string name="repo_remote_push">Push</string>
     <string name="repo_remote_url">URL</string>
     <string name="action_check_update">Check for updates</string>
     <string name="keys_can_sign">can sign</string>
