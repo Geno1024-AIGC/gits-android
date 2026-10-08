@@ -20,18 +20,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.CallSplit
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Cloud
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.DarkMode
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Palette
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Terminal
-import androidx.compose.material.icons.filled.VpnKey
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -55,8 +43,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -122,7 +111,7 @@ fun SettingsScreen(
                 SectionHeader(stringResource(R.string.settings_section_identity))
                 SettingsCard {
                     SettingsRow(
-                        icon = Icons.Default.Person,
+                        icon = painterResource(R.drawable.ic_person),
                         title = stringResource(R.string.settings_identity),
                         subtitle = state.identity?.let { "${it.name} <${it.email}>" }
                             ?: stringResource(R.string.settings_identity_unset),
@@ -135,7 +124,7 @@ fun SettingsScreen(
                 SectionHeader(stringResource(R.string.settings_section_credentials))
                 SettingsCard {
                     SettingsRow(
-                        icon = Icons.Default.VpnKey,
+                        icon = painterResource(R.drawable.ic_vpn_key),
                         title = stringResource(R.string.keys_title),
                         subtitle = when {
                             state.keys.isEmpty() -> stringResource(R.string.settings_no_keys)
@@ -148,7 +137,7 @@ fun SettingsScreen(
                     )
                     RowDivider()
                     SettingsRow(
-                        icon = Icons.Default.Cloud,
+                        icon = painterResource(R.drawable.ic_cloud),
                         title = stringResource(R.string.accounts_section),
                         subtitle = if (state.accounts.isEmpty()) {
                             stringResource(R.string.settings_accounts_none)
@@ -160,7 +149,7 @@ fun SettingsScreen(
                     )
                     RowDivider()
                     SettingsRow(
-                        icon = Icons.Default.Terminal,
+                        icon = painterResource(R.drawable.ic_terminal),
                         title = stringResource(R.string.ssh_title),
                         subtitle = if (state.sshKeys.isEmpty()) {
                             stringResource(R.string.settings_no_keys)
@@ -176,7 +165,7 @@ fun SettingsScreen(
                 SectionHeader(stringResource(R.string.settings_section_repositories))
                 SettingsCard {
                     SettingsRow(
-                        icon = Icons.Default.CallSplit,
+                        icon = painterResource(R.drawable.ic_call_split),
                         title = stringResource(R.string.settings_default_branch),
                         subtitle = state.defaultBranch,
                         monoSubtitle = true,
@@ -189,14 +178,14 @@ fun SettingsScreen(
                 SectionHeader(stringResource(R.string.settings_appearance))
                 SettingsCard {
                     SettingsRow(
-                        icon = Icons.Default.DarkMode,
+                        icon = painterResource(R.drawable.ic_dark_mode),
                         title = stringResource(R.string.settings_theme),
                         subtitle = stringResource(theme.mode.label()),
                         onClick = { choosingThemeMode = true },
                     )
                     RowDivider()
                     SettingsRow(
-                        icon = Icons.Default.Palette,
+                        icon = painterResource(R.drawable.ic_palette),
                         title = stringResource(R.string.settings_theme_preset),
                         subtitle = stringResource(theme.preset.label()),
                         onClick = { choosingPreset = true },
@@ -207,7 +196,7 @@ fun SettingsScreen(
                         CUSTOM_COLOR_SLOTS.forEach { (slot, name) ->
                             RowDivider()
                             SettingsRow(
-                                icon = Icons.Default.Palette,
+                                icon = painterResource(R.drawable.ic_palette),
                                 title = stringResource(name),
                                 subtitle = theme.colors[slot]
                                     ?.let { colorHex(it) }
@@ -225,7 +214,7 @@ fun SettingsScreen(
                 SectionHeader(stringResource(R.string.settings_section_app))
                 SettingsCard {
                     SettingsRow(
-                        icon = Icons.Default.Info,
+                        icon = painterResource(R.drawable.ic_info),
                         title = stringResource(R.string.about_title),
                         subtitle = BuildConfig.VERSION_NAME,
                         monoSubtitle = true,
@@ -319,7 +308,7 @@ fun SettingsScaffold(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
+                            painterResource(R.drawable.ic_arrow_back),
                             contentDescription = stringResource(R.string.action_back),
                         )
                     }
@@ -370,7 +359,7 @@ private fun RowDivider() {
  */
 @Composable
 fun SettingsRow(
-    icon: ImageVector,
+    icon: Painter,
     title: String,
     subtitle: String,
     swatch: Long? = null,
@@ -417,7 +406,7 @@ fun SettingsRow(
             )
         }
         Icon(
-            Icons.Default.ChevronRight,
+            painterResource(R.drawable.ic_chevron_right),
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -576,7 +565,7 @@ private fun AccountsDialog(
                             }
                             IconButton(onClick = { onRemove(account.host) }) {
                                 Icon(
-                                    Icons.Default.Close,
+                                    painterResource(R.drawable.ic_close),
                                     contentDescription = stringResource(R.string.action_forget_account),
                                 )
                             }

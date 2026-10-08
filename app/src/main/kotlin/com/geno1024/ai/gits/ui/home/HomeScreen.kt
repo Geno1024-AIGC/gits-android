@@ -14,15 +14,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.CloudDownload
-import androidx.compose.material.icons.filled.CreateNewFolder
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.FolderOpen
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.VpnKey
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
@@ -48,8 +39,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -182,19 +174,19 @@ fun HomeScreen(
                     } else {
                         IconButton(onClick = onOpenSettings) {
                             Icon(
-                                Icons.Default.Settings,
+                                painterResource(R.drawable.ic_settings),
                                 contentDescription = stringResource(R.string.settings_title),
                             )
                         }
                         IconButton(onClick = onManageKeys) {
                             Icon(
-                                Icons.Default.VpnKey,
+                                painterResource(R.drawable.ic_vpn_key),
                                 contentDescription = stringResource(R.string.keys_title),
                             )
                         }
                         IconButton(onClick = { pick(FolderWant.OPEN) }) {
                             Icon(
-                                Icons.Default.FolderOpen,
+                                painterResource(R.drawable.ic_folder_open),
                                 contentDescription = stringResource(R.string.action_open_repository),
                             )
                         }
@@ -213,7 +205,7 @@ fun HomeScreen(
                 ) {
                     if (selected.size == 1) {
                         ActionButton(
-                            icon = Icons.Default.FolderOpen,
+                            icon = painterResource(R.drawable.ic_folder_open),
                             label = stringResource(R.string.action_open_repository),
                             onClick = {
                                 val only = state.repositories.firstOrNull { it.path in selected }
@@ -224,7 +216,7 @@ fun HomeScreen(
                         )
                     }
                     ActionButton(
-                        icon = Icons.Default.Delete,
+                        icon = painterResource(R.drawable.ic_delete),
                         label = stringResource(R.string.action_forget),
                         onClick = { forgetting = state.repositories.filter { it.path in selected } },
                     )
@@ -233,14 +225,14 @@ fun HomeScreen(
                 Box {
                     FloatingActionButton(onClick = { menu = true }) {
                         Icon(
-                            Icons.Default.Add,
+                            painterResource(R.drawable.ic_add),
                             contentDescription = stringResource(R.string.action_new),
                         )
                     }
                     DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                         DropdownMenuItem(
                             text = { Text(stringResource(R.string.create_repository_action)) },
-                            leadingIcon = { Icon(Icons.Default.CreateNewFolder, contentDescription = null) },
+                            leadingIcon = { Icon(painterResource(R.drawable.ic_create_new_folder), contentDescription = null) },
                             onClick = {
                                 menu = false
                                 creating = true
@@ -248,7 +240,7 @@ fun HomeScreen(
                         )
                         DropdownMenuItem(
                             text = { Text(stringResource(R.string.action_clone_repository)) },
-                            leadingIcon = { Icon(Icons.Default.CloudDownload, contentDescription = null) },
+                            leadingIcon = { Icon(painterResource(R.drawable.ic_cloud_download), contentDescription = null) },
                             onClick = {
                                 menu = false
                                 cloning = true
@@ -396,7 +388,7 @@ private fun RepositoryRow(
             if (picking) {
                 Checkbox(checked = picked, onCheckedChange = { onToggle() })
             } else {
-                Icon(Icons.Default.Folder, contentDescription = null)
+                Icon(painterResource(R.drawable.ic_folder), contentDescription = null)
             }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
@@ -586,7 +578,7 @@ private fun ParentField(parent: File?, onPickParent: () -> Unit) {
     ) {
         IconButton(onClick = onPickParent) {
             Icon(
-                Icons.Default.CreateNewFolder,
+                painterResource(R.drawable.ic_create_new_folder),
                 contentDescription = stringResource(R.string.action_pick_parent),
             )
         }
@@ -609,7 +601,7 @@ private fun ParentField(parent: File?, onPickParent: () -> Unit) {
 
 /** One labelled button in the corner. The label is the point, so it is not hidden from a screen reader. */
 @Composable
-private fun ActionButton(icon: ImageVector, label: String, onClick: () -> Unit) {
+private fun ActionButton(icon: Painter, label: String, onClick: () -> Unit) {
     ExtendedFloatingActionButton(
         onClick = onClick,
         icon = { Icon(icon, contentDescription = null) },

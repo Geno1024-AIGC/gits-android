@@ -22,19 +22,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.NoteAdd
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.CloudDownload
-import androidx.compose.material.icons.filled.CloudUpload
-import androidx.compose.material.icons.filled.Commit
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Remove
-import androidx.compose.material.icons.filled.Save
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
@@ -69,7 +56,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
@@ -139,7 +127,7 @@ fun RepoScreen(path: String, onBack: () -> Unit, onOpenSettings: () -> Unit) {
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
+                            painterResource(R.drawable.ic_arrow_back),
                             contentDescription = stringResource(R.string.action_back),
                         )
                     }
@@ -151,23 +139,23 @@ fun RepoScreen(path: String, onBack: () -> Unit, onOpenSettings: () -> Unit) {
                         SelectionActions(state = state, viewModel = viewModel)
                     } else {
                         IconButton(onClick = viewModel::refresh) {
-                            Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.action_refresh))
+                            Icon(painterResource(R.drawable.ic_refresh), contentDescription = stringResource(R.string.action_refresh))
                         }
                         IconButton(onClick = viewModel::pull) {
                             Icon(
-                                Icons.Default.CloudDownload,
+                                painterResource(R.drawable.ic_cloud_download),
                                 contentDescription = stringResource(R.string.action_pull),
                             )
                         }
                         IconButton(onClick = viewModel::push) {
                             Icon(
-                                Icons.Default.CloudUpload,
+                                painterResource(R.drawable.ic_cloud_upload),
                                 contentDescription = stringResource(R.string.action_push),
                             )
                         }
                         IconButton(onClick = onOpenSettings) {
                             Icon(
-                                Icons.Default.Settings,
+                                painterResource(R.drawable.ic_settings),
                                 contentDescription = stringResource(R.string.settings_title),
                             )
                         }
@@ -574,9 +562,9 @@ private fun FileActions(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         // Ordered so the one taken most often, the commit, sits nearest the thumb.
-        ActionButton(icon = Icons.AutoMirrored.Filled.NoteAdd, label = stringResource(R.string.action_new), onClick = onNew)
-        ActionButton(icon = Icons.Default.Save, label = stringResource(R.string.repo_stash_action), onClick = onStash)
-        ActionButton(icon = Icons.Default.Commit, label = stringResource(R.string.repo_commit_go), onClick = onCommit)
+        ActionButton(icon = painterResource(R.drawable.ic_note_add), label = stringResource(R.string.action_new), onClick = onNew)
+        ActionButton(icon = painterResource(R.drawable.ic_save), label = stringResource(R.string.repo_stash_action), onClick = onStash)
+        ActionButton(icon = painterResource(R.drawable.ic_commit), label = stringResource(R.string.repo_commit_go), onClick = onCommit)
     }
 }
 
@@ -598,14 +586,14 @@ private fun StageActions(state: RepoUiState, viewModel: RepoViewModel) {
     ) {
         if (waiting) {
             ActionButton(
-                icon = Icons.Default.Add,
+                icon = painterResource(R.drawable.ic_add),
                 label = stringResource(R.string.repo_stage),
                 onClick = viewModel::stageSelected,
             )
         }
         if (already) {
             ActionButton(
-                icon = Icons.Default.Remove,
+                icon = painterResource(R.drawable.ic_remove),
                 label = stringResource(R.string.repo_unstage),
                 onClick = viewModel::unstageSelected,
             )
@@ -615,7 +603,7 @@ private fun StageActions(state: RepoUiState, viewModel: RepoViewModel) {
 
 /** One labelled button in the corner. The label is the point, so it is not hidden from a screen reader. */
 @Composable
-private fun ActionButton(icon: ImageVector, label: String, onClick: () -> Unit) {
+private fun ActionButton(icon: Painter, label: String, onClick: () -> Unit) {
     ExtendedFloatingActionButton(
         onClick = onClick,
         icon = { Icon(icon, contentDescription = null) },
@@ -805,7 +793,7 @@ private fun StashesDialog(state: RepoUiState, viewModel: RepoViewModel) {
                             }
                             IconButton(onClick = { viewModel.dropStash(stash.ref) }) {
                                 Icon(
-                                    Icons.Default.Close,
+                                    painterResource(R.drawable.ic_close),
                                     contentDescription = stringResource(R.string.repo_stash_drop),
                                 )
                             }
@@ -1070,7 +1058,7 @@ private fun RemotesPane(state: RepoUiState, viewModel: RepoViewModel) {
                         }
                         IconButton(onClick = { viewModel.removeRemote(remote.name) }) {
                             Icon(
-                                Icons.Default.Close,
+                                painterResource(R.drawable.ic_close),
                                 contentDescription = stringResource(R.string.action_remove_remote),
                             )
                         }
@@ -1093,7 +1081,7 @@ private fun RemotesPane(state: RepoUiState, viewModel: RepoViewModel) {
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
-                    Icon(Icons.Default.CloudDownload, contentDescription = null)
+                    Icon(painterResource(R.drawable.ic_cloud_download), contentDescription = null)
                     Text(stringResource(R.string.repo_remote_pull))
                 }
             }
@@ -1102,7 +1090,7 @@ private fun RemotesPane(state: RepoUiState, viewModel: RepoViewModel) {
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
-                    Icon(Icons.Default.CloudUpload, contentDescription = null)
+                    Icon(painterResource(R.drawable.ic_cloud_upload), contentDescription = null)
                     Text(stringResource(R.string.repo_remote_push))
                 }
             }
@@ -1236,7 +1224,7 @@ private fun EntryMenu(onRename: () -> Unit, onDelete: () -> Unit) {
     Box {
         IconButton(onClick = { open = true }) {
             Icon(
-                Icons.Default.MoreVert,
+                painterResource(R.drawable.ic_more_vert),
                 contentDescription = stringResource(R.string.repo_files_more),
             )
         }
@@ -1367,7 +1355,7 @@ private fun TextDialog(
                     )
                     IconButton(onClick = onDismiss) {
                         Icon(
-                            Icons.Default.Close,
+                            painterResource(R.drawable.ic_close),
                             contentDescription = stringResource(R.string.repo_files_close),
                         )
                     }
