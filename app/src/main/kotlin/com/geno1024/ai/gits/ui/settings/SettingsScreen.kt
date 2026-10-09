@@ -47,7 +47,6 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -63,7 +62,6 @@ import com.geno1024.ai.gits.data.Ssh
 import com.geno1024.ai.gits.data.StoredAccount
 import com.geno1024.ai.gits.data.StoredKey
 import com.geno1024.ai.gits.git.Identity
-import com.geno1024.ai.gits.git.toCredentialHost
 import com.geno1024.ai.gits.ui.CommandNote
 import com.geno1024.ai.gits.ui.theme.MonoFontFamily
 import com.geno1024.ai.gits.ui.theme.ThemeMode
@@ -87,6 +85,7 @@ import kotlinx.coroutines.withContext
 fun SettingsScreen(
     onBack: () -> Unit,
     onOpenKeys: () -> Unit,
+    onOpenAccounts: () -> Unit,
     onOpenSsh: () -> Unit,
     onOpenAbout: () -> Unit,
     viewModel: SettingsViewModel = viewModel(),
@@ -95,7 +94,6 @@ fun SettingsScreen(
     val theme by viewModel.theme.collectAsStateWithLifecycle()
     var editingIdentity by remember { mutableStateOf(false) }
     var editingBranch by remember { mutableStateOf(false) }
-    var editingAccounts by remember { mutableStateOf(false) }
     var choosingThemeMode by remember { mutableStateOf(false) }
     var choosingPreset by remember { mutableStateOf(false) }
     var choosingColor by remember { mutableStateOf<String?>(null) }
@@ -146,7 +144,7 @@ fun SettingsScreen(
                             state.accounts.joinToString { it.host }
                         },
                         monoSubtitle = true,
-                        onClick = { editingAccounts = true },
+                        onClick = onOpenAccounts,
                     )
                     RowDivider()
                     SettingsRow(
@@ -245,19 +243,6 @@ fun SettingsScreen(
                 viewModel.saveDefaultBranch(it)
                 editingBranch = false
             },
-        )
-    }
-
-    if (editingAccounts) {
-        AccountsDialog(
-            accounts = state.accounts,
-            onDismiss = { editingAccounts = false },
-            onAdd = { host, username, token ->
-                viewModel.addAccount(host, username, token)
-                editingAccounts = false
-            },
-            onRemove = viewModel::removeAccount,
-            onForgetAll = viewModel::forgetAllAccounts,
         )
     }
 
@@ -512,117 +497,6 @@ private fun DefaultBranchDialog(
     )
 }
 
-/**
- * Adds and removes the secrets the app holds for remote hosts.
- *
- * The form is here rather than only at the moment a host demands something, because
- * a token entered under time pressure against a failing push is the one most likely
- * to be wrong, and because a secret you cannot see the back of is one you cannot
- * revoke. Which host a secret belongs to is asked for as an address, since that is
- * what the user has in front of them, and it is filed under the name the transport
- * will ask about.
- */
-@Composable
-private fun AccountsDialog(
-    accounts: List<StoredAccount>,
-    onDismiss: () -> Unit,
-    onAdd: (String, String, CharArray) -> Unit,
-    onRemove: (String) -> Unit,
-    onForgetAll: () -> Unit,
-) {
-    var address by remember { mutableStateOf("") }
-    var username by remember { mutableStateOf("") }
-    var token by remember { mutableStateOf("") }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.accounts_section)) },
-        text = {
-            Column(
-                modifier = Modifier.verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                if (accounts.isEmpty()) {
-                    Text(
-                        text = stringResource(R.string.settings_accounts_empty),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                } else {
-                    accounts.forEach { account ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    account.host,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontFamily = MonoFontFamily,
-                                )
-                                Text(
-                                    text = account.username.ifEmpty {
-                                        stringResource(R.string.accounts_no_name)
-                                    },
-                                    style = MaterialTheme.typography.bodySmall,
-                                    fontFamily = MonoFontFamily,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                            IconButton(onClick = { onRemove(account.host) }) {
-                                Icon(
-                                    painterResource(R.drawable.ic_close),
-                                    contentDescription = stringResource(R.string.action_forget_account),
-                                )
-                            }
-                        }
-                    }
-                    // The way out of every account sits with the list it empties,
-                    // rather than in another screen that happens to show it too.
-                    TextButton(
-                        onClick = onForgetAll,
-                        modifier = Modifier.align(Alignment.End),
-                    ) { Text(stringResource(R.string.action_forget_all_accounts)) }
-                }
-
-                HorizontalDivider()
-
-                OutlinedTextField(
-                    value = address,
-                    onValueChange = { address = it },
-                    label = { Text(stringResource(R.string.field_host)) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                OutlinedTextField(
-                    value = username,
-                    onValueChange = { username = it },
-                    label = { Text(stringResource(R.string.field_username)) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                OutlinedTextField(
-                    value = token,
-                    onValueChange = { token = it },
-                    label = { Text(stringResource(R.string.field_token)) },
-                    visualTransformation = PasswordVisualTransformation(),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = { onAdd(address, username, token.toCharArray()) },
-                enabled = address.isNotBlank() && username.isNotBlank() && token.isNotBlank(),
-            ) { Text(stringResource(R.string.action_add)) }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_ok)) }
-        },
-    )
-}
-
 data class SettingsUiState(
     val identity: Identity? = null,
     val keys: List<StoredKey> = emptyList(),
@@ -685,32 +559,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     /** Fills one slot of the custom scheme, or empties it so the default shows through. */
     fun setThemeColor(slot: String, color: Long?) = themeStore.setColor(slot, color)
-
-    /**
-     * Keeps a name and a secret for a host.
-     *
-     * The field takes an address rather than a bare host, because an address is what
-     * the user has in front of them — and the entry has to be filed under the name
-     * the transport will ask for, or the secret sits somewhere nothing looks for it.
-     * A bare host, a host and a port, a host and a path all reach the same answer;
-     * something with no host in it at all, such as a local path, is not stored.
-     */
-    fun addAccount(address: String, username: String, token: CharArray) {
-        val host = address.toCredentialHost()
-        if (host.isNotEmpty()) credentialStore.remember(host, username.trim(), token)
-        refresh()
-    }
-
-    fun removeAccount(host: String) {
-        credentialStore.forget(host)
-        refresh()
-    }
-
-    /** Lets every stored account go at once, for when a machine is handed over. */
-    fun forgetAllAccounts() {
-        credentialStore.forgetAll()
-        refresh()
-    }
 }
 
 /**

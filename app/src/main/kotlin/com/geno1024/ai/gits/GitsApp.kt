@@ -6,6 +6,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.geno1024.ai.gits.ui.accounts.AccountsScreen
 import com.geno1024.ai.gits.ui.home.HomeScreen
 import com.geno1024.ai.gits.ui.keys.KeysScreen
 import com.geno1024.ai.gits.ui.repo.RepoScreen
@@ -18,6 +19,7 @@ private object Routes {
     const val HOME = "home"
     const val REPO = "repo"
     const val KEYS = "keys"
+    const val ACCOUNTS = "accounts"
     const val SSH = "ssh"
     const val SETTINGS = "settings"
     const val ABOUT = "about"
@@ -43,6 +45,7 @@ fun GitsApp() {
             SettingsScreen(
                 onBack = { controller.popBackStack() },
                 onOpenKeys = { controller.navigate(Routes.KEYS) { launchSingleTop = true } },
+                onOpenAccounts = { controller.navigate(Routes.ACCOUNTS) { launchSingleTop = true } },
                 onOpenSsh = { controller.navigate(Routes.SSH) { launchSingleTop = true } },
                 onOpenAbout = { controller.navigate(Routes.ABOUT) { launchSingleTop = true } },
             )
@@ -52,6 +55,9 @@ fun GitsApp() {
         // one you land on would depend on which icon you pressed.
         composable(Routes.KEYS) {
             KeysScreen(onBack = { controller.popBackStack() })
+        }
+        composable(Routes.ACCOUNTS) {
+            AccountsScreen(onBack = { controller.popBackStack() })
         }
         composable(Routes.SSH) {
             SshScreen(onBack = { controller.popBackStack() })
