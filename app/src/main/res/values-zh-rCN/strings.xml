@@ -196,7 +196,7 @@
     <string name="settings_default_branch">默认分支</string>
     <string name="settings_default_branch_note">新建仓库以此为起点。新建对话框会预填它，也仍可修改。</string>
     <string name="settings_accounts_none">还没有</string>
-    <string name="settings_accounts_selected">%1$d 台主机：%2$s</string>
+    <string name="settings_accounts_selected">%1$d 台</string>
     <string name="settings_accounts_empty">还没有主机。需要时会自动询问，也可以先在这里填好用户名和密钥。</string>
 
     <string name="settings_appearance">外观</string>

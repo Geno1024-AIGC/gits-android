@@ -203,7 +203,7 @@
     <string name="settings_default_branch">Default branch</string>
     <string name="settings_default_branch_note">New repositories start on this. The create dialog opens with it and still takes an edit.</string>
     <string name="settings_accounts_none">None yet</string>
-    <string name="settings_accounts_selected">%1$d hosts: %2$s</string>
+    <string name="settings_accounts_selected">%1$d signed in</string>
     <string name="settings_accounts_empty">No host yet. One is asked for when it is needed, or a name and a secret can be given here first.</string>
 
     <string name="settings_appearance">Appearance</string>
