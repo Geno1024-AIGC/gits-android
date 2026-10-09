@@ -141,7 +141,11 @@ fun SettingsScreen(
                         subtitle = if (state.accounts.isEmpty()) {
                             stringResource(R.string.settings_accounts_none)
                         } else {
-                            state.accounts.joinToString { it.host }
+                            stringResource(
+                                R.string.settings_accounts_selected,
+                                state.accounts.size,
+                                state.accounts.joinToString { it.host },
+                            )
                         },
                         monoSubtitle = true,
                         onClick = onOpenAccounts,
