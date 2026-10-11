@@ -1,5 +1,6 @@
 import com.geno1024.ai.gits.gradle.Versioning
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
@@ -32,20 +33,29 @@ android {
         buildConfig = true
     }
 
-    // A build that is meant to replace an installed app has to carry the same signing
-    // key as that app, or the platform refuses it before the install even starts. The
-    // key is supplied by the environment rather than kept in the repository, and a
-    // build without one still works, it just cannot be installed over another one.
-    val signingKeyStore = providers.environmentVariable("GITS_SIGNING_STORE_FILE")
-        .orElse(providers.gradleProperty("gits.signing.storeFile"))
+    // The org's shared signing key, read the way RULES/KEYSTORE.md orders it:
+    // environment first, then a git-ignored local.properties, and nothing written
+    // down in the repository itself. A missing key is not an error — the build
+    // still works, it just cannot be installed over another one.
+    val signingProps = Properties().apply {
+        val file = rootProject.file("local.properties")
+        if (file.exists()) file.inputStream().use { load(it) }
+    }
+    fun signingSecret(property: String, env: String): String? =
+        System.getenv(env)?.takeIf { it.isNotBlank() }
+            ?: signingProps.getProperty(property)?.takeIf { it.isNotBlank() }
+
+    val signingStoreFile = signingSecret("keystore.storeFile", "KEYSTORE_STORE_FILE")
+    val signingStorePassword = signingSecret("keystore.storePassword", "KEYSTORE_STORE_PASSWORD")
 
     signingConfigs {
-        if (signingKeyStore.isPresent) {
+        if (signingStoreFile != null && signingStorePassword != null) {
             create("release") {
-                storeFile = file(signingKeyStore.get())
-                storePassword = providers.environmentVariable("GITS_SIGNING_STORE_PASSWORD").orNull
-                keyAlias = providers.environmentVariable("GITS_SIGNING_KEY_ALIAS").getOrElse("gits")
-                keyPassword = providers.environmentVariable("GITS_SIGNING_KEY_PASSWORD").orNull
+                storeFile = file(signingStoreFile)
+                storePassword = signingStorePassword
+                keyPassword = signingSecret("keystore.keyPassword", "KEYSTORE_KEY_PASSWORD")
+                    ?: signingStorePassword
+                keyAlias = signingSecret("keystore.keyAlias", "KEYSTORE_KEY_ALIAS") ?: "geno"
             }
         }
     }
@@ -56,9 +66,7 @@ android {
             // The published build is the debug one, so the debug variant is the one that
             // has to be signed with the shared key; without it this falls back to the
             // machine-local debug key and no two builds can replace each other.
-            if (signingKeyStore.isPresent) {
-                signingConfig = signingConfigs.getByName("release")
-            }
+            signingConfigs.findByName("release")?.let { signingConfig = it }
         }
         release {
             isMinifyEnabled = true
@@ -67,6 +75,9 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
+            // Nothing publishes this variant today, but it is assembled with the same
+            // shared key whenever it is.
+            signingConfigs.findByName("release")?.let { signingConfig = it }
         }
     }
 
