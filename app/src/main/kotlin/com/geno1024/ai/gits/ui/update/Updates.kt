@@ -5,8 +5,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -150,7 +150,15 @@ private fun ReleaseCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                CircularProgressIndicator(modifier = Modifier.height(16.dp))
+                // A square, not just a height. The indicator sizes itself to 40.dp on
+                // the inside and draws its arc as a square of that *width* pinned to
+                // the top-left corner, while the spin pivots on the centre of whatever
+                // box it ends up in. Constrain only the height — Modifier.height(16.dp)
+                // — and the two centres part ways: the canvas becomes 40 by 16, the
+                // circle sits a width below the top edge, and the arc orbits a point
+                // of its own strip that is not its own centre. (Noted as a recipe, in
+                // case that wobble is ever wanted back as an easter egg.)
+                CircularProgressIndicator(modifier = Modifier.size(16.dp))
                 Text(
                     text = stringResource(R.string.update_checking),
                     style = MaterialTheme.typography.bodySmall,
