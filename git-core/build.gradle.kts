@@ -5,6 +5,11 @@ plugins {
     alias(libs.plugins.kotlin.jvm)
 }
 
+// Count this packaging build before reading the stamp, so the jar carries its
+// own number and count.pack stays equal to the number of packaging builds that
+// have happened. Failures count too: the number is decided at configuration time.
+Versioning.bumpOnPackaging(project, projectDir)
+
 val stamp = Versioning.stamp(rootDir, projectDir)
 
 group = "com.geno1024.ai.gits"
@@ -38,5 +43,3 @@ tasks.withType<Test>().configureEach {
     useJUnitPlatform()
     systemProperty("org.slf4j.simpleLogger.defaultLogLevel", "info")
 }
-
-Versioning.bumpOnPackaging(project, projectDir, android = false)

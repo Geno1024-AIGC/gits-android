@@ -7,6 +7,11 @@ plugins {
     alias(libs.plugins.compose.compiler)
 }
 
+// Count this packaging build before reading the stamp, so the APK carries its
+// own number and count.pack stays equal to the number of packaging builds that
+// have happened. Failures count too: the number is decided at configuration time.
+Versioning.bumpOnPackaging(project, projectDir)
+
 val stamp = Versioning.stamp(rootDir, projectDir)
 
 android {
@@ -125,5 +130,3 @@ dependencies {
 tasks.withType<Test>().configureEach {
     useJUnitPlatform()
 }
-
-Versioning.bumpOnPackaging(project, projectDir, android = true)
