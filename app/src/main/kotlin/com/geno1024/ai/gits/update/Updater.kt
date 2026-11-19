@@ -31,30 +31,36 @@ object Updater {
     fun sourceFrom(id: String?): Source = SOURCES.firstOrNull { it.id == id } ?: SOURCES.first()
 
     /**
-     * A build stamp: `0.1.<env>.<pack>.<sha>`.
+     * A build stamp: `<major>.<minor>.<env>.<pack>.<sha>`.
      *
-     * [env] is the CI run number and [pack] the number of packaging runs, both
-     * monotonic within a stream, so ordering is by those two. [sha] identifies the
-     * commit and is deliberately not part of the comparison: it is a name, not a number.
+     * [base] is carried as text so an installed build keeps reading releases after a
+     * base bump. [env] is the commit count and the only ordered field; [pack] grows
+     * on every local rebuild of the same commit and must not vote. [sha] is a name.
      */
-    class Version(val env: Int, val pack: Int, val sha: String) : Comparable<Version> {
-        override fun compareTo(other: Version): Int =
-            compareValuesBy(this, other, Version::env, Version::pack)
+    class Version(val base: String, val env: Int, val pack: Int, val sha: String) :
+        Comparable<Version> {
+
+        override fun compareTo(other: Version): Int = env.compareTo(other.env)
 
         override fun equals(other: Any?): Boolean =
-            other is Version && env == other.env && pack == other.pack && sha == other.sha
+            other is Version && base == other.base && env == other.env &&
+                pack == other.pack && sha == other.sha
 
-        override fun hashCode(): Int = (env * 31 + pack) * 31 + sha.hashCode()
+        override fun hashCode(): Int = ((base.hashCode() * 31 + env) * 31 + pack) * 31 + sha.hashCode()
 
-        override fun toString(): String = "0.1.$env.$pack.$sha"
+        override fun toString(): String = "$base.$env.$pack.$sha"
     }
 
     fun parseVersion(text: String): Version? {
-        val match = Regex("""0\.1\.(\d+)\.(\d+)\.([0-9a-fA-F]{8})""").find(text) ?: return null
+        // Any `<major>.<minor>` base: a hardcoded prefix makes every installed
+        // build go dark the moment the base moves.
+        val match = Regex("""(\d+\.\d+)\.(\d+)\.(\d+)\.([0-9a-fA-F]{8})""").find(text)
+            ?: return null
         return Version(
-            env = match.groupValues[1].toInt(),
-            pack = match.groupValues[2].toInt(),
-            sha = match.groupValues[3].lowercase(),
+            base = match.groupValues[1],
+            env = match.groupValues[2].toInt(),
+            pack = match.groupValues[3].toInt(),
+            sha = match.groupValues[4].lowercase(),
         )
     }
 
@@ -90,7 +96,7 @@ object Updater {
                 apkName = apk?.get("name") as? String,
                 apkSize = ((apk?.get("size") as? Number)?.toDouble() ?: 0.0).toLong(),
             )
-        }
+        }.filter { it.apkName != null }
     }
 
     /**
